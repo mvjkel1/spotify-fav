@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
@@ -18,7 +18,7 @@ async def current_music(access_token: str) -> dict:
     This endpoint retrieves the currently playing music from the user's Spotify account.
 
     Args:
-        access_token (str): The Spotify access token.
+        access_token (str): The Spotify user access token.
 
     Returns:
         dict: The JSON response containing the currently playing music.
@@ -37,14 +37,14 @@ async def current_music(access_token: str) -> dict:
 
 
 @router.get("/playback_state")
-async def playback_state(access_token: str) -> dict:
+async def playback_state(access_token: str):
     """
     Fetch Playback State.
 
     This endpoint retrieves the current playback state from the user's Spotify account.
 
     Args:
-        access_token (str): The Spotify access token.
+        access_token (str): The Spotify user access token.
 
     Returns:
         dict: The JSON response containing the playback state.
@@ -61,12 +61,6 @@ async def playback_state(access_token: str) -> dict:
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
 
-# TODO (when the db is ready)
-# @router.get("/compare_timestamp")
-# async def compare(access_token: str):
-#     response = await playback_state(access_token)
-#     if (
-#         response["is_playing"]
-#         and response["progress_ms"] >= response["item"]["duration_ms"] - 4000
-#     ):
-#         print("debug")
+# TODO
+# async def post_track():
+#     pass
