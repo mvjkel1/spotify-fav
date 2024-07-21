@@ -1,8 +1,18 @@
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from models import Track
+from database import SessionLocal
+from sqlalchemy.orm import Session
+
+router = APIRouter(prefix="/music", tags=["music"])
 
 
-router = APIRouter()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @router.get("/current_music")
@@ -54,3 +64,14 @@ async def playback_state(access_token: str):
         if response.status_code == 200:
             return response.json()
         raise HTTPException(status_code=response.status_code, detail=response.text)
+
+
+# TODO
+# @router.post("/track")
+# async def track(db: Session = Depends(get_db)):
+#     track_model = Track()
+#     track_model.spotify_id = "123"
+#     track_model.title = "test_title"
+#     track_model.listened = True
+#     db.add(track_model)
+#     db.commit()
