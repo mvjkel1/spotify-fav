@@ -92,9 +92,7 @@ async def poll_playback_state(access_token: str, db_session: Session) -> None:
         await asyncio.sleep(1)
 
 
-async def handle_playing_track(
-    state: dict, db_session: Session, access_token: str
-) -> None:
+async def handle_playing_track(state: dict, db_session: Session, access_token: str) -> None:
     """
     Handle the logic for a track that is currently playing.
 
@@ -116,9 +114,7 @@ async def handle_playing_track(
             await create_track_entry(track_title, track_hash, db_session)
 
 
-async def create_track_entry(
-    track_title: str, track_hash: str, db_session: Session
-) -> None:
+async def create_track_entry(track_title: str, track_hash: str, db_session: Session) -> None:
     """
     Create a new track entry in the database.
 
@@ -132,9 +128,7 @@ async def create_track_entry(
     db_session.commit()
 
 
-async def update_listened_count(
-    track: Track, db_session: Session, access_token: str
-) -> None:
+async def update_listened_count(track: Track, db_session: Session, access_token: str) -> None:
     """
     Update the listened count for a track in the database.
 
