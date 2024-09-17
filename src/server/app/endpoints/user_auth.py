@@ -6,6 +6,7 @@ from dotenv import dotenv_values, find_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+
 from app.db.database import get_db
 from app.token_manager import save_token
 from app.utils import generate_random_string, get_spotify_headers
@@ -45,7 +46,7 @@ async def get_current_user(db_session: Session = Depends(get_db)) -> dict:
         )
 
 
-async def get_current_user_id(db_session: Session = Depends(get_db)) -> str:
+async def get_current_user_id(db_session: Session) -> str:
     """
     Retrieve the current user's Spotify user ID.
 
@@ -136,8 +137,10 @@ async def callback(request: Request, db_session: Session = Depends(get_db)):
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=exc.response.status_code, detail=f"HTTP error occurred: {exc}"
-        )
+        ) from exc
     except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail=f"Error while requesting from Spotify: {exc}")
+        raise HTTPException(
+            status_code=502, detail=f"Error while requesting from Spotify: {exc}"
+        ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {exc}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {exc}") from exc
