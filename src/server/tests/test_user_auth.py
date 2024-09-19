@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+from fastapi.responses import RedirectResponse
 import httpx
 import pytest
 import status
@@ -49,7 +50,7 @@ def mock_config():
 @patch("app.endpoints.user_auth.get_spotify_headers", return_value=HEADERS)
 @pytest.mark.parametrize("expected_output", [USER_DATA])
 async def test_get_current_user_success(
-    mock_spotify_headers, mock_async_client, test_client, expected_output
+    mock_spotify_headers, mock_async_client, expected_output
 ):
     result = await get_current_user()
     assert result == expected_output
@@ -63,7 +64,9 @@ async def test_get_current_user_success(
 @patch("app.endpoints.user_auth.get_spotify_headers", return_value=HEADERS)
 @patch(
     "app.endpoints.user_auth.httpx.AsyncClient.get",
-    side_effect=HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"),
+    side_effect=HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
+    ),
 )
 @pytest.mark.parametrize(
     "expected_status_code, expected_message",
@@ -72,7 +75,6 @@ async def test_get_current_user_success(
 async def test_get_current_user_failure(
     mock_async_client,
     mock_spotify_headers,
-    test_client,
     expected_status_code,
     expected_message,
 ):
@@ -85,7 +87,7 @@ async def test_get_current_user_failure(
 
 @pytest.mark.asyncio
 @patch("app.endpoints.user_auth.get_current_user", return_value=USER_DATA)
-async def test_get_current_user_id_success(mock_get_current_user, db_session, test_client):
+async def test_get_current_user_id_success(mock_get_current_user, db_session):
     user_id = await get_current_user_id(db_session)
     assert user_id == "user123"
 
@@ -93,7 +95,9 @@ async def test_get_current_user_id_success(mock_get_current_user, db_session, te
 @pytest.mark.asyncio
 @patch(
     "app.endpoints.user_auth.get_current_user",
-    side_effect=HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"),
+    side_effect=HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
+    ),
 )
 @pytest.mark.parametrize(
     "expected_status_code, expected_message",
@@ -102,7 +106,6 @@ async def test_get_current_user_id_success(mock_get_current_user, db_session, te
 async def test_get_current_user_id_failure(
     mock_get_current_user,
     db_session,
-    test_client,
     expected_status_code,
     expected_message,
 ):
@@ -124,7 +127,6 @@ async def test_get_current_user_id_failure(
 @patch("app.endpoints.user_auth.generate_random_string", return_value="randomstring123")
 async def test_login(
     mock_generate_random_string,
-    test_client,
     mock_config,
     expected_output,
 ):
@@ -133,13 +135,13 @@ async def test_login(
 
 
 @pytest.mark.asyncio
-async def test_callback_missing_code(test_client):
+async def test_callback_missing_code():
     request = Request(
         {
             "type": "http",
             "method": "GET",
             "headers": {},
-            "query_string": b"",
+            "query_string": "",
             "url": "url",
         }
     )
@@ -147,3 +149,27 @@ async def test_callback_missing_code(test_client):
         response = await callback(request)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json() == {"detail": "Authorization code not found in request"}
+
+
+@pytest.mark.asyncio
+@patch("app.endpoints.user_auth.save_token")
+@patch(
+    "app.endpoints.user_auth.httpx.AsyncClient.post",
+    return_value=httpx.Response(
+        200, json={"access_token": "123", "refresh_token": "321", "expires_in": 0}
+    ),
+)
+async def test_callback_success(mock_mock_async_client, mock_save_token, db_session):
+    query_string = "code=code123"
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "headers": {},
+            "query_string": query_string,
+            "url": "url",
+        }
+    )
+    response = await callback(request, db_session)
+    assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
+    mock_save_token.assert_called_once_with("123", "321", 0, db_session)

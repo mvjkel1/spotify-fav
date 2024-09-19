@@ -106,7 +106,9 @@ async def callback(request: Request, db_session: Session = Depends(get_db)):
     """
     code = request.query_params.get("code")
     if not code:
-        raise HTTPException(status_code=400, detail="Authorization code not found in request")
+        raise HTTPException(
+            status_code=400, detail="Authorization code not found in request"
+        )
     try:
         auth_header = base64.b64encode(
             f"{config['CLIENT_ID']}:{config['CLIENT_SECRET']}".encode()
@@ -123,7 +125,6 @@ async def callback(request: Request, db_session: Session = Depends(get_db)):
         }
         async with httpx.AsyncClient() as client:
             response = await client.post(token_url, data=form_data, headers=headers)
-        response.raise_for_status()
         response_json = response.json()
         access_token = response_json["access_token"]
         refresh_token = response_json["refresh_token"]
@@ -142,5 +143,3 @@ async def callback(request: Request, db_session: Session = Depends(get_db)):
         raise HTTPException(
             status_code=502, detail=f"Error while requesting from Spotify: {exc}"
         ) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {exc}") from exc
