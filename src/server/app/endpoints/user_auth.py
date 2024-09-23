@@ -2,6 +2,7 @@ import base64
 import urllib.parse
 
 import httpx
+import status
 from dotenv import dotenv_values, find_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -38,7 +39,7 @@ async def get_current_user(db_session: Session = Depends(get_db)) -> dict:
     headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
-        if response.status_code == 200:
+        if response.status_code == status.HTTP_200_OK:
             return response.json()
         raise HTTPException(
             status_code=response.status_code,
@@ -106,7 +107,10 @@ async def callback(request: Request, db_session: Session = Depends(get_db)):
     """
     code = request.query_params.get("code")
     if not code:
-        raise HTTPException(status_code=400, detail="Authorization code not found in request")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Authorization code not found in request",
+        )
     try:
         auth_header = base64.b64encode(
             f"{config['CLIENT_ID']}:{config['CLIENT_SECRET']}".encode()
@@ -129,7 +133,8 @@ async def callback(request: Request, db_session: Session = Depends(get_db)):
         expires_in = response_json.get("expires_in")
         if not access_token or not refresh_token:
             raise HTTPException(
-                status_code=500, detail="Failed to retrieve tokens from Spotify API"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to retrieve tokens from Spotify API",
             )
         save_token(access_token, refresh_token, expires_in, db_session)
         return RedirectResponse(url=config["CALLBACK_REDIRECT_URL"])
@@ -139,5 +144,6 @@ async def callback(request: Request, db_session: Session = Depends(get_db)):
         ) from exc
     except httpx.RequestError as exc:
         raise HTTPException(
-            status_code=502, detail=f"Error while requesting from Spotify: {exc}"
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error while requesting from Spotify: {exc}",
         ) from exc
