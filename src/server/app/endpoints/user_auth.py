@@ -2,9 +2,8 @@ import base64
 import urllib.parse
 
 import httpx
-import status
 from dotenv import dotenv_values, find_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
