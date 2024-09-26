@@ -1,8 +1,10 @@
 from app.db.database import get_db
-from app.services.tracks_service import (get_current_track, get_playback_state,
-                                         get_recently_played_track,
-                                         poll_playback_state)
-from app.token_manager import get_token
+from app.services.tracks_service import (
+    get_current_track,
+    get_playback_state,
+    get_recently_played_track,
+    poll_playback_state,
+)
 from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
 
