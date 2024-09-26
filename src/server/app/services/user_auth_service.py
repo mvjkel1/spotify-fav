@@ -2,37 +2,26 @@ import base64
 import urllib.parse
 
 import httpx
+from app.token_manager import save_token
+from app.utils import generate_random_string, get_spotify_headers
 from dotenv import dotenv_values, find_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.db.database import get_db
-from app.token_manager import save_token
-from app.utils import generate_random_string, get_spotify_headers
-
 env_path = find_dotenv()
 config = dotenv_values(env_path)
-router = APIRouter(tags=["user_auth"])
 
 
-@router.get("/me")
-async def get_current_user(db_session: Session = Depends(get_db)) -> dict:
+async def get_current_user(db_session: Session) -> dict:
     """
     Retrieve the current user's Spotify profile information.
 
-    This endpoint uses the Spotify API to fetch the current user's profile data.
-    It requires a valid access token to authenticate the request.
-
     Args:
-        db_session (Session): The database session dependency, used for obtaining headers.
+        db_session (Session): SQLAlchemy session to get Spotify headers.
 
     Returns:
         dict: A dictionary containing the current user's profile information.
-
-    Raises:
-        HTTPException: If the request to the Spotify API fails, an HTTPException is raised
-        with the appropriate status code and error details.
     """
     url = f"{config['SPOTIFY_API_URL']}/me"
     headers = await get_spotify_headers(db_session)
@@ -50,11 +39,8 @@ async def get_current_user_id(db_session: Session) -> str:
     """
     Retrieve the current user's Spotify user ID.
 
-    This function uses the `get_current_user` function to fetch the current user's profile
-    data and extracts the user ID from the response.
-
     Args:
-        db_session (Session): The database session dependency.
+        db_session (Session): SQLAlchemy session to get Spotify headers.
 
     Returns:
         str: The current user's Spotify user ID.
@@ -64,21 +50,17 @@ async def get_current_user_id(db_session: Session) -> str:
     if not current_user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to fetch current user ID",
+            detail="Failed to fetch current user ID",
         )
     return current_user_id
 
 
-@router.get("/login")
-async def login() -> dict:
+def generate_spotify_login_url() -> dict:
     """
-    Generate Spotify OAuth2 login URL.
-
-    This endpoint creates a URL that redirects the user to Spotify's authorization page
-    where they can grant the application access to their Spotify account.
+    Generate the Spotify OAuth2 login URL.
 
     Returns:
-        dict: A dictionary containing the URL for the user to log in via Spotify.
+        dict: A dictionary containing the login URL for Spotify OAuth2 authorization.
     """
     params = {
         "response_type": "code",
@@ -91,31 +73,23 @@ async def login() -> dict:
     return {"login_url": url}
 
 
-@router.get("/callback")
-async def callback(request: Request, db_session: Session = Depends(get_db)):
+async def handle_spotify_callback(code: str, db_session: Session) -> RedirectResponse:
     """
-    Handle the Spotify OAuth2 callback.
-
-    This endpoint exchanges the authorization code received from Spotify for access and
-    refresh tokens, then saves them. It also handles errors that may occur during this process.
+    Handle the Spotify OAuth2 callback and exchange the authorization code for access and refresh tokens.
 
     Args:
-        request (Request): The request object containing the authorization code.
-        db_session (Session): The database session dependency.
+        code (str): Authorization code from Spotify.
+        db_session (Session): SQLAlchemy session for token storage.
 
     Returns:
-        RedirectResponse: Redirects the user to the documentation page upon successful token exchange.
-
-    Raises:
-        HTTPException: If any error occurs during the token exchange process or if the authorization
-        code is missing, an HTTPException is raised with the appropriate status code and error details.
+        RedirectResponse: Redirect to the provided redirect URL after successful authentication.
     """
-    code = request.query_params.get("code")
     if not code:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Authorization code not found in request",
         )
+
     try:
         auth_header = base64.b64encode(
             f"{config['CLIENT_ID']}:{config['CLIENT_SECRET']}".encode()

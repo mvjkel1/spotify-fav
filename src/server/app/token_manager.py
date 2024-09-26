@@ -1,10 +1,10 @@
 from time import time
 
 import httpx
-from dotenv import dotenv_values, find_dotenv
-from sqlalchemy.orm import Session
-from fastapi import status
 from app.db.models import AccessToken
+from dotenv import dotenv_values, find_dotenv
+from fastapi import status
+from sqlalchemy.orm import Session
 
 env_path = find_dotenv()
 config = dotenv_values(env_path)

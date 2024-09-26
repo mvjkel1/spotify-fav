@@ -1,10 +1,9 @@
 from random import choice
 from string import ascii_letters, digits
 
+from app.token_manager import get_token
 from dotenv import dotenv_values, find_dotenv
 from sqlalchemy.orm import Session
-
-from app.token_manager import get_token
 
 env_path = find_dotenv()
 config = dotenv_values(env_path)
