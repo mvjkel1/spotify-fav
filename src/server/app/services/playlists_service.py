@@ -112,9 +112,7 @@ def get_tracks_for_playlist(db_session: Session) -> list:
     return db_session.query(Track).filter(Track.listened_count > 0).all()
 
 
-def create_playlist_in_db(
-    playlist_name: str, tracks: list, db_session: Session
-) -> Playlist:
+def create_playlist_in_db(playlist_name: str, tracks: list, db_session: Session) -> Playlist:
     """
     Create a new playlist entry in the local database and associate it with the given tracks.
 
