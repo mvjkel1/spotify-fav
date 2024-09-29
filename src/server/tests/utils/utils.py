@@ -17,6 +17,13 @@ USER_DATA_EXAMPLE_MALFORMED = {
 }
 
 
+ACCESS_TOKEN_EXAMPLE = {
+    "access_token": "fake_access_token",
+    "refresh_token": "fake_refresh_token",
+    "expires_in": 3600,
+}
+
+
 def get_model_attributes(instance):
     return {
         key: value
