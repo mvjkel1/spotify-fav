@@ -57,3 +57,21 @@ def mock_generate_random_string():
         "app.services.user_auth_service.generate_random_string", return_value="str1ng"
     ) as mock:
         yield mock
+
+
+@pytest.fixture(scope="module")
+def mock_generate_spotify_login_url():
+    with patch(
+        "app.routers.user_auth_router.generate_spotify_login_url",
+        new_callable=AsyncMock,
+    ) as mock:
+        yield mock
+
+
+@pytest.fixture(scope="module")
+def mock_handle_spotify_callback():
+    with patch(
+        "app.routers.user_auth_router.handle_spotify_callback",
+        new_callable=AsyncMock,
+    ) as mock:
+        yield mock
