@@ -2,7 +2,7 @@ from app.db.database import get_db
 from app.services.tracks_service import (
     get_current_track,
     get_playback_state,
-    get_recently_played_track,
+    get_recently_played_tracks,
     poll_playback_state,
 )
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -59,7 +59,7 @@ async def get_recently_played(limit: int = 1, db_session: Session = Depends(get_
     Returns:
         dict: A dictionary containing details of the recently played tracks.
     """
-    return await get_recently_played_track(db_session, limit)
+    return await get_recently_played_tracks(db_session, limit)
 
 
 @router.get("/playback-state")
