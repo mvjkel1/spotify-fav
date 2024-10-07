@@ -3,11 +3,6 @@ from fastapi.responses import RedirectResponse
 import httpx
 import pytest
 from fastapi import HTTPException, status
-from ..utils.utils import (
-    ACCESS_TOKEN_EXAMPLE,
-    USER_DATA_EXAMPLE,
-    USER_DATA_EXAMPLE_MALFORMED,
-)
 from app.services.user_auth_service import (
     get_current_user,
     get_current_user_id,
@@ -23,17 +18,19 @@ from ..fixtures.user_auth_fixtures import (
     mock_async_client_post,
     mock_config_env,
     mock_generate_random_string,
+    USER_DATA_EXAMPLE,
+    USER_DATA_EXAMPLE_MALFORMED,
+    ACCESS_TOKEN_EXAMPLE,
 )
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("expected_output", [USER_DATA_EXAMPLE])
 async def test_get_current_user_success(
-    db_session, mock_get_spotify_headers, mock_async_client_get, expected_output
+    db_session, mock_get_spotify_headers, mock_async_client_get
 ):
     mock_async_client_get.return_value = httpx.Response(status_code=200, json=USER_DATA_EXAMPLE)
     result = await get_current_user(db_session)
-    assert result == expected_output
+    assert result == USER_DATA_EXAMPLE
 
 
 @pytest.mark.asyncio
