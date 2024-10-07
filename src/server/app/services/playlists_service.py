@@ -22,7 +22,7 @@ async def get_my_playlists_from_spotify(
         db_session (Session): SQLAlchemy session used to obtain the Spotify headers.
 
     Returns:
-        dict: A JSON response from Spotify containing the user's playlists.
+        dict[str, str]: A JSON response from Spotify containing the user's playlists.
 
     Raises:
         HTTPException: If the Spotify API request fails, an HTTPException is raised with the
@@ -99,7 +99,7 @@ async def add_tracks_to_playlist(
             ) from exc
 
 
-def get_tracks_for_playlist(db_session: Session) -> list:
+def get_tracks_for_playlist(db_session: Session) -> list[Track]:
     """
     Fetch tracks from the database that have been listened to (i.e., have a nonzero listened count).
 
@@ -107,7 +107,7 @@ def get_tracks_for_playlist(db_session: Session) -> list:
         db_session (Session): SQLAlchemy session used for database operations.
 
     Returns:
-        list: A list of tracks with a listened count greater than zero.
+        list[Track]: A list of tracks with a listened count greater than zero.
     """
     return db_session.query(Track).filter(Track.listened_count > 0).all()
 
