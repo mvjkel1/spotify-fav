@@ -20,7 +20,7 @@ async def get_my_playlists(
     offset: int = Query(0),
     limit: int = Query(20, ge=1),
     db_session: Session = Depends(get_db),
-) -> dict:
+) -> dict[str, str]:
     """
     Retrieve user's playlists from Spotify.
 
@@ -30,14 +30,16 @@ async def get_my_playlists(
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
-        dict: A dictionary containing the playlists retrieved from Spotify.
+        dict[str, str]: A dictionary containing the playlists retrieved from Spotify.
     """
     user_id = await get_current_user_id(db_session)
     return await get_my_playlists_from_spotify(user_id, offset, limit, db_session)
 
 
 @router.post("/playlists")
-async def create_playlist(playlist_name: str, db_session: Session = Depends(get_db)) -> dict:
+async def create_playlist(
+    playlist_name: str, db_session: Session = Depends(get_db)
+) -> dict[str, str]:
     """
     Create a new playlist in the local database and on Spotify.
 
@@ -46,7 +48,7 @@ async def create_playlist(playlist_name: str, db_session: Session = Depends(get_
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
-        dict: A dictionary containing a success message.
+        dict[str, str]: A dictionary containing a success message.
 
     Raises:
         HTTPException: If there is an HTTP error when interacting with Spotify's API.
