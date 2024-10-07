@@ -43,7 +43,7 @@ def save_token(access_token: str, refresh_token: str, expires_in: int, db_sessio
     db_session.commit()
 
 
-async def get_token(db_session: Session) -> dict:
+async def get_token(db_session: Session) -> dict[str, str]:
     """
     Retrieve the current access token if it is still valid, or refresh it.
 
@@ -101,7 +101,7 @@ def is_token_expired(token: AccessToken) -> bool:
     return token.expires_at < time()
 
 
-async def handle_token_refresh(db_session: Session, refresh_token: str) -> dict:
+async def handle_token_refresh(db_session: Session, refresh_token: str) -> dict[str, str]:
     """
     Handle the token refresh process.
 
@@ -110,7 +110,7 @@ async def handle_token_refresh(db_session: Session, refresh_token: str) -> dict:
         refresh_token (str): The refresh token used to get a new access token.
 
     Returns:
-        dict: The refreshed token data.
+        dict[str, str]: The refreshed token data.
 
     Raises:
         HTTPException: If the refresh process fails.
@@ -123,7 +123,7 @@ async def handle_token_refresh(db_session: Session, refresh_token: str) -> dict:
         ) from exc
 
 
-async def refresh_access_token(db_session: Session, refresh_token: str) -> dict:
+async def refresh_access_token(db_session: Session, refresh_token: str) -> dict[str, str]:
     """
     Refresh the access token using the refresh token.
 
@@ -132,7 +132,7 @@ async def refresh_access_token(db_session: Session, refresh_token: str) -> dict:
         refresh_token (str): The refresh token used to get a new access token.
 
     Returns:
-        dict: A dictionary containing the refreshed token data.
+        dict[str, str]: A dictionary containing the refreshed token data.
 
     Raises:
         RefreshTokenError: If the refresh token is invalid or an unexpected error occurs.
