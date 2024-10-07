@@ -12,7 +12,7 @@ router = APIRouter(tags=["user_auth"], prefix="/user-auth")
 
 
 @router.get("/me")
-async def get_me(db_session: Session = Depends(get_db)) -> dict:
+async def get_me(db_session: Session = Depends(get_db)) -> dict[str, str]:
     """
     Retrieve the current user's information from the database.
 
@@ -20,18 +20,18 @@ async def get_me(db_session: Session = Depends(get_db)) -> dict:
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
-        dict: A dictionary containing the current user's information.
+        dict[str, str]: A dictionary containing the current user's information.
     """
     return await get_current_user(db_session)
 
 
 @router.get("/login")
-async def login() -> dict:
+async def login() -> dict[str, str]:
     """
     Generate and return the Spotify OAuth2 login URL.
 
     Returns:
-        dict: A dictionary containing the Spotify login URL.
+        dict[str, str]: A dictionary containing the Spotify login URL.
     """
     return await generate_spotify_login_url()
 
