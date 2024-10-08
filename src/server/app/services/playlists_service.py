@@ -36,11 +36,15 @@ async def get_my_playlists_from_spotify(
             url = f"{config['SPOTIFY_API_URL']}/users/{user_id}/playlists?offset={offset}&limit={limit}"
             response = await client.get(url, headers=headers)
             response.raise_for_status()
-            return response.json()
         except httpx.HTTPStatusError as exc:
             raise HTTPException(
                 status_code=exc.response.status_code, detail=exc.response.text
             ) from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+            ) from exc
+        return response.json()
 
 
 async def create_playlist_service(playlist_name: str, db_session: Session) -> dict[str, str]:
@@ -68,6 +72,10 @@ async def create_playlist_service(playlist_name: str, db_session: Session) -> di
         )
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
     return {"message": f"The '{playlist_name}' playlist created successfully."}
 
 
@@ -92,8 +100,17 @@ async def create_playlist_on_spotify(
     url = f"{config['SPOTIFY_API_URL']}/users/{user_id}/playlists"
     payload = {"name": playlist_name}
     async with httpx.AsyncClient() as client:
-        response = await client.post(url, headers=spotify_headers, json=payload)
-        response.raise_for_status()
+        try:
+            response = await client.post(url, headers=spotify_headers, json=payload)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(
+                status_code=exc.response.status_code, detail=exc.response.text
+            ) from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+            ) from exc
         return response.json()["id"]
 
 
