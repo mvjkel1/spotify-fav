@@ -1,6 +1,6 @@
 from unittest.mock import AsyncMock, patch
-import pytest
 
+import pytest
 
 USER_DATA_EXAMPLE = {
     "id": "user123",

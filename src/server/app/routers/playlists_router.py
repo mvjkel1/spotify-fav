@@ -1,8 +1,5 @@
 from app.db.database import get_db
-from app.services.playlists_service import (
-    create_playlist_service,
-    get_my_playlists_from_spotify,
-)
+from app.services.playlists_service import create_playlist_service, get_my_playlists_from_spotify
 from app.services.user_auth_service import get_current_user_id
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session

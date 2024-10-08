@@ -2,8 +2,8 @@ import asyncio
 
 import httpx
 from app.db.models import Track
-from app.utils import config
 from app.token_manager import get_spotify_headers
+from app.utils import config
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 

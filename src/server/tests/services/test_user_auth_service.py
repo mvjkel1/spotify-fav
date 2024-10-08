@@ -1,26 +1,27 @@
 from unittest.mock import patch
-from fastapi.responses import RedirectResponse
+
 import httpx
 import pytest
-from fastapi import HTTPException, status
 from app.services.user_auth_service import (
+    generate_spotify_login_url,
     get_current_user,
     get_current_user_id,
-    generate_spotify_login_url,
     handle_spotify_callback,
 )
-from ..fixtures.user_auth_fixtures import mock_get_current_user
-from ..conftest import db_session
+from fastapi import HTTPException, status
+from fastapi.responses import RedirectResponse
 
+from ..conftest import db_session
 from ..fixtures.user_auth_fixtures import (
-    mock_get_spotify_headers,
+    ACCESS_TOKEN_EXAMPLE,
+    USER_DATA_EXAMPLE,
+    USER_DATA_EXAMPLE_MALFORMED,
     mock_async_client_get,
     mock_async_client_post,
     mock_config_env,
     mock_generate_random_string,
-    USER_DATA_EXAMPLE,
-    USER_DATA_EXAMPLE_MALFORMED,
-    ACCESS_TOKEN_EXAMPLE,
+    mock_get_current_user,
+    mock_get_spotify_headers,
 )
 
 
