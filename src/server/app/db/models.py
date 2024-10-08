@@ -1,5 +1,6 @@
+from datetime import datetime, timezone
 from app.db.database import Base
-from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 
 playlist_track_association_table = Table(
@@ -27,6 +28,7 @@ class Track(Base):
     spotify_id = Column(String, nullable=False)
     title = Column(String, nullable=False)
     listened_count = Column(Integer, default=0)
+    added_at = Column(DateTime, default=datetime.now(tz=timezone.utc))
     playlists = relationship(
         "Playlist", secondary=playlist_track_association_table, back_populates="tracks"
     )
@@ -48,6 +50,7 @@ class Playlist(Base):
     tracks = relationship(
         "Track", secondary=playlist_track_association_table, back_populates="playlists"
     )
+    created_at = Column(DateTime, default=datetime.now(tz=timezone.utc))
 
 
 class AccessToken(Base):
