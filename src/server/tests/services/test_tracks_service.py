@@ -2,14 +2,19 @@ from unittest.mock import patch
 
 import httpx
 import pytest
+from fastapi import HTTPException, status
+
 from app.services.tracks_service import (
     get_current_track,
     get_playback_state,
     get_recently_played_tracks,
     handle_playing_track,
 )
-from fastapi import HTTPException, status
-
+from ..fixtures.constants import (
+    GET_CURRENT_TRACK_URL,
+    GET_PLAYBACK_STATE_URL,
+    GET_RECENTLY_PLAYED_TRACKS_URL,
+)
 from ..conftest import db_session
 from ..fixtures.tracks_fixtures import (
     SPOTIFY_HEADERS_EXAMPLE,
@@ -20,16 +25,12 @@ from ..fixtures.tracks_fixtures import (
     mock_process_playing_track,
 )
 
-GET_CURRENT_TRACK_URL = "https://api.spotify.com/v1/me/player/currently-playing"
-GET_RECENTLY_PLAYED_TRACKS_URL = "https://api.spotify.com/v1/me/player/recently-played?limit=1"
-GET_PLAYBACK_STATE_URL = "https://api.spotify.com/v1/me/player"
-
 
 @pytest.mark.asyncio
 async def test_get_current_track_success(
     db_session, mock_get_spotify_headers, mock_async_client_get, mock_config_env
 ):
-    mock_request = httpx.Request("GET", "https://api.spotify.com/v1/me/player/currently-playing")
+    mock_request = httpx.Request("GET", "mock_request")
     mock_async_client_get.return_value = httpx.Response(
         status_code=200, json={"track": "track123"}, request=mock_request
     )
@@ -45,7 +46,7 @@ async def test_get_current_track_success(
 async def test_get_current_track_failure(
     db_session, mock_get_spotify_headers, mock_async_client_get, mock_config_env
 ):
-    mock_request = httpx.Request("GET", "https://api.spotify.com/v1/me/player/currently-playing")
+    mock_request = httpx.Request("GET", "mock_request")
     mock_async_client_get.return_value = httpx.Response(
         status_code=status.HTTP_401_UNAUTHORIZED, request=mock_request
     )
@@ -63,9 +64,7 @@ async def test_get_current_track_failure(
 async def test_get_recently_played_tracks_success(
     db_session, mock_get_spotify_headers, mock_async_client_get, mock_config_env
 ):
-    mock_request = httpx.Request(
-        "GET", "https://api.spotify.com/v1/me/player/recently-played?limit=1"
-    )
+    mock_request = httpx.Request("GET", "mock_request")
     mock_async_client_get.return_value = httpx.Response(
         status_code=200, json={"track1": "track1", "track2": "track2"}, request=mock_request
     )
@@ -81,9 +80,7 @@ async def test_get_recently_played_tracks_success(
 async def test_get_recently_played_tracks_failure(
     db_session, mock_get_spotify_headers, mock_async_client_get, mock_config_env
 ):
-    mock_request = httpx.Request(
-        "GET", "https://api.spotify.com/v1/me/player/recently-played?limit=1"
-    )
+    mock_request = httpx.Request("GET", "mock_request")
     mock_async_client_get.return_value = httpx.Response(
         status_code=status.HTTP_401_UNAUTHORIZED, request=mock_request
     )
@@ -101,7 +98,7 @@ async def test_get_recently_played_tracks_failure(
 async def test_get_playback_state_success(
     db_session, mock_get_spotify_headers, mock_async_client_get, mock_config_env
 ):
-    mock_request = httpx.Request("GET", "https://api.spotify.com/v1/me/player")
+    mock_request = httpx.Request("GET", "mock_request")
     mock_async_client_get.return_value = httpx.Response(
         status_code=status.HTTP_200_OK, json={"state": "playing"}, request=mock_request
     )
@@ -117,7 +114,7 @@ async def test_get_playback_state_success(
 async def test_get_playback_state_failure(
     db_session, mock_get_spotify_headers, mock_async_client_get, mock_config_env
 ):
-    mock_request = httpx.Request("GET", "https://api.spotify.com/v1/me/player")
+    mock_request = httpx.Request("GET", "mock_request")
     mock_async_client_get.return_value = httpx.Response(
         status_code=status.HTTP_401_UNAUTHORIZED, request=mock_request
     )

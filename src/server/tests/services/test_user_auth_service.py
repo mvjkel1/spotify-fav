@@ -2,20 +2,23 @@ from unittest.mock import patch
 
 import httpx
 import pytest
+from fastapi import HTTPException, status
+from fastapi.responses import RedirectResponse
+
 from app.services.user_auth_service import (
     generate_spotify_login_url,
     get_current_user,
     get_current_user_id,
     handle_spotify_callback,
 )
-from fastapi import HTTPException, status
-from fastapi.responses import RedirectResponse
 
 from ..conftest import db_session
-from ..fixtures.user_auth_fixtures import (
+from ..fixtures.constants import (
     ACCESS_TOKEN_EXAMPLE,
     USER_DATA_EXAMPLE,
     USER_DATA_EXAMPLE_MALFORMED,
+)
+from ..fixtures.user_auth_fixtures import (
     mock_async_client_get,
     mock_async_client_post,
     mock_config_env,
@@ -82,7 +85,7 @@ async def test_handle_spotify_callback_missing_code(db_session):
 async def test_handle_spotify_callback_success(
     mock_save_token, mock_async_client_post, mock_config_env, db_session
 ):
-    mock_request = httpx.Request("POST", "https://accounts.spotify.com/api/token")
+    mock_request = httpx.Request("POST", "mock_request")
     mock_async_client_post.return_value = httpx.Response(
         200, json=ACCESS_TOKEN_EXAMPLE, request=mock_request
     )
@@ -99,7 +102,7 @@ async def test_handle_spotify_callback_success(
 async def test_handle_spotify_callback_invalid_token_response(
     mock_async_client_post, mock_config_env, db_session
 ):
-    mock_request = httpx.Request("POST", "https://accounts.spotify.com/api/token")
+    mock_request = httpx.Request("POST", "mock_request")
     mock_response_data = {"foo": "bar"}
     mock_async_client_post.return_value = httpx.Response(
         status_code=200, json=mock_response_data, request=mock_request
