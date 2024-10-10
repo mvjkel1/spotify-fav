@@ -24,8 +24,7 @@ async def get_my_playlists(
     Returns:
         dict: A dictionary containing the playlists retrieved from Spotify.
     """
-    user_id = await get_current_user_id(db_session)
-    return await get_my_playlists_from_spotify(user_id, offset, limit, db_session)
+    return await get_my_playlists_from_spotify(offset, limit, db_session)
 
 
 @router.post("/playlists")

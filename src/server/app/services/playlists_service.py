@@ -7,14 +7,11 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 
-async def get_my_playlists_from_spotify(
-    user_id: str, offset: int, limit: int, db_session: Session
-) -> dict:
+async def get_my_playlists_from_spotify(offset: int, limit: int, db_session: Session) -> dict:
     """
     Retrieve the current user's playlists from Spotify.
 
     Args:
-        user_id (str): The Spotify user ID.
         offset (int): The index of the first playlist to return.
         limit (int): The number of playlists to return.
         db_session (Session): SQLAlchemy session used to obtain the Spotify headers.
@@ -29,6 +26,7 @@ async def get_my_playlists_from_spotify(
     headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         try:
+            user_id = await get_current_user_id(db_session)
             url = f"{config['SPOTIFY_API_URL']}/users/{user_id}/playlists?offset={offset}&limit={limit}"
             response = await client.get(url, headers=headers)
             response.raise_for_status()
@@ -96,17 +94,8 @@ async def create_playlist_on_spotify(
     url = f"{config['SPOTIFY_API_URL']}/users/{user_id}/playlists"
     payload = {"name": playlist_name}
     async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(url, headers=spotify_headers, json=payload)
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            raise HTTPException(
-                status_code=exc.response.status_code, detail=exc.response.text
-            ) from exc
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-            ) from exc
+        response = await client.post(url, headers=spotify_headers, json=payload)
+        response.raise_for_status()
         return response.json()["id"]
 
 
@@ -129,17 +118,8 @@ async def add_tracks_to_playlist(
     track_uris = [f"spotify:track:{track_id}" for track_id in track_ids]
     payload = {"uris": track_uris}
     async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(url, headers=spotify_headers, json=payload)
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            raise HTTPException(
-                status_code=exc.response.status_code, detail=exc.response.text
-            ) from exc
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-            ) from exc
+        response = await client.post(url, headers=spotify_headers, json=payload)
+        response.raise_for_status()
 
 
 def fetch_listened_tracks(db_session: Session) -> list[Track]:
