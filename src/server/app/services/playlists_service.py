@@ -41,7 +41,7 @@ async def get_my_playlists_from_spotify(offset: int, limit: int, db_session: Ses
         return response.json()
 
 
-async def create_playlist_service(playlist_name: str, db_session: Session) -> dict[str, str]:
+async def process_playlist_creation(playlist_name: str, db_session: Session) -> dict[str, str]:
     """
     Create a new playlist in the local database and on Spotify.
 
