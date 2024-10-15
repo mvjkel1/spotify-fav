@@ -2,7 +2,7 @@ import httpx
 import pytest
 from fastapi import HTTPException, status
 
-from ..conftest import db_session
+from ..conftest import db_session, test_client
 from ..fixtures.constants import GET_CURRENT_USER_URL, SPOTIFY_HEADERS_EXAMPLE, USER_DATA_EXAMPLE
 from ..fixtures.user_auth_fixtures import (
     mock_async_client_get,
