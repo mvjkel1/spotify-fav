@@ -6,7 +6,7 @@ from app.services.tracks_service import (
     poll_playback_state,
 )
 from app.services.user_auth_service import is_user_authorized
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["tracks"], prefix="/tracks")
@@ -45,7 +45,9 @@ async def poll(
     if is_user_authorized(db_session):
         background_tasks.add_task(poll_playback_state, db_session)
         return {"message": "Playback state polling started in the background."}
-    raise HTTPException(404, "Unauthorized - to start the polling you have to login first.")
+    raise HTTPException(
+        status.HTTP_401_UNAUTHORIZED, "Unauthorized - to start the polling you have to login first."
+    )
 
 
 @router.get("/recently-played")
