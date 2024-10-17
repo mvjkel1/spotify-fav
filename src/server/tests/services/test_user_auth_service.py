@@ -63,9 +63,8 @@ async def test_get_current_user_id_failure(mock_get_current_user_service, db_ses
     assert exc.value.detail == "Failed to fetch current user ID"
 
 
-@pytest.mark.asyncio
 async def test_generate_spotify_login_url(mock_config_env, mock_generate_random_string):
-    result = await generate_spotify_login_url()
+    result = generate_spotify_login_url()
     assert result == {
         "login_url": "SPOTIFY_AUTH_URL?response_type=code&client_id=CLIENT_ID&scope=SPOTIFY_API_SCOPES&redirect_uri=REDIRECT_URI&state=str1ng"
     }
