@@ -1,5 +1,6 @@
-from fastapi import HTTPException, status
 import pytest
+from fastapi import HTTPException, status
+
 from ..conftest import db_session, test_client
 from ..fixtures.routers.playlists_router_fixtures import (
     mock_get_my_playlists_from_spotify,

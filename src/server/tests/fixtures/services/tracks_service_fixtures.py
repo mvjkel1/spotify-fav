@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from ..constants import SPOTIFY_HEADERS_EXAMPLE, TRACK_DATA_EXAMPLE, ENV_CONFIG_EXAMPLE
+from ..constants import ENV_CONFIG_EXAMPLE, SPOTIFY_HEADERS_EXAMPLE, TRACK_DATA_EXAMPLE
 
 
 @pytest.fixture(scope="function")
