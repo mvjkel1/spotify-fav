@@ -3,10 +3,10 @@ from app.services.playlists_service import get_my_playlists_from_spotify, proces
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-router = APIRouter(tags=["playlists"])
+router = APIRouter(tags=["playlists"], prefix="/playlists")
 
 
-@router.get("/playlists")
+@router.get("/get")
 async def get_my_playlists(
     offset: int = Query(0),
     limit: int = Query(20, ge=1),
@@ -26,7 +26,7 @@ async def get_my_playlists(
     return await get_my_playlists_from_spotify(offset, limit, db_session)
 
 
-@router.post("/playlists")
+@router.post("/create")
 async def create_playlist(playlist_name: str, db_session: Session = Depends(get_db)) -> dict:
     """
     Create a new playlist in the local database and on Spotify.
