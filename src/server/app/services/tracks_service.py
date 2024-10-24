@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.models import Track
-from app.token_manager import get_spotify_headers
+from app.services.token_manager import get_spotify_headers
 from app.services.utils import config
 
 
