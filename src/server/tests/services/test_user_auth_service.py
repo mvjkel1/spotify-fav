@@ -2,15 +2,14 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-from fastapi import HTTPException, status
-from fastapi.responses import RedirectResponse
-
 from app.services.user_auth_service import (
     generate_spotify_login_url,
     get_current_user,
     get_current_user_id,
     handle_spotify_callback,
 )
+from fastapi import HTTPException, status
+from fastapi.responses import RedirectResponse
 
 from ..conftest import db_session
 from ..fixtures.constants import (

@@ -1,5 +1,6 @@
 from random import choice
 from string import ascii_letters, digits
+from time import perf_counter
 
 from dotenv import dotenv_values, find_dotenv
 
@@ -19,3 +20,14 @@ def generate_random_string(length: int) -> str:
     """
     letters = ascii_letters + digits
     return "".join(choice(letters) for _ in range(length))
+
+
+def time_it_async(fn):
+    async def inner(*args, **kwargs):
+        start = perf_counter()
+        result = await fn(*args, **kwargs)
+        end = perf_counter()
+        print(f"The {fn.__name__} took {end - start} seconds")
+        return result
+
+    return inner
