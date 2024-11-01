@@ -1,19 +1,18 @@
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
-
 from app.db.database import get_db
 from app.services.playlists_service import (
+    get_all_playlists,
     get_playlists_from_spotify,
     process_playlist_creation,
-    get_all_playlists,
-    retrieve_playlist_by_spotify_id,
+    retrieve_playlist_from_spotify_by_spotify_id,
 )
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["playlists"], prefix="/playlists")
 
 
-@router.get("/get")
-async def get_my_playlists(
+@router.get("/")
+async def get_playlists(
     offset: int = Query(0),
     limit: int = Query(20, ge=1),
     db_session: Session = Depends(get_db),
@@ -60,7 +59,7 @@ async def get_playlist_by_spotify_id(
     Returns:
         dict: A dictionary containing the retrieved playlist information.
     """
-    return retrieve_playlist_by_spotify_id(spotify_id, db_session)
+    return await retrieve_playlist_from_spotify_by_spotify_id(spotify_id, db_session)
 
 
 @router.post("/create")

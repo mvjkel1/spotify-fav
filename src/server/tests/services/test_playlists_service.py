@@ -3,14 +3,13 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
-from fastapi import HTTPException, status
-
 from app.db.models import Track
 from app.services.playlists_service import (
     fetch_listened_tracks,
     get_playlists_from_spotify,
     process_playlist_creation,
 )
+from fastapi import HTTPException, status
 
 from ..conftest import db_session
 from ..fixtures.constants import (
@@ -24,6 +23,7 @@ from ..fixtures.services.playlists_service_fixtures import (
     mock_config_env,
     mock_create_playlist_on_spotify,
     mock_fetch_listened_tracks,
+    mock_get_all_playlists,
     mock_get_current_user_id,
     mock_get_spotify_headers,
 )
@@ -74,13 +74,14 @@ async def test_process_playlist_creation_success(
     mock_get_spotify_headers,
     mock_async_client_post,
     mock_get_current_user_id,
+    mock_get_all_playlists,
     mock_fetch_listened_tracks,
     mock_create_playlist_on_spotify,
 ):
     mock_request = httpx.Request("POST", "mock_request")
     mock_async_client_post.return_value = httpx.Response(200, json={}, request=mock_request)
     response = await process_playlist_creation("test", db_session)
-    assert response == {"message": "The 'test' playlist created successfully."}
+    assert response == {"message": "The 'test' playlist was created successfully."}
     mock_async_client_post.assert_awaited_with(
         CREATE_PLAYLIST_SERVICE_URL,
         headers=SPOTIFY_HEADERS_EXAMPLE,
@@ -94,6 +95,7 @@ async def test_process_playlist_creation_failure(
     mock_get_spotify_headers,
     mock_async_client_post,
     mock_get_current_user_id,
+    mock_get_all_playlists,
     mock_fetch_listened_tracks,
     mock_create_playlist_on_spotify,
 ):
@@ -110,26 +112,3 @@ async def test_process_playlist_creation_failure(
         headers=SPOTIFY_HEADERS_EXAMPLE,
         json={"uris": ["spotify:track:10", "spotify:track:20"]},
     )
-
-
-def test_fetch_listened_tracks_success(db_session):
-    test_track = Track(title="Test Track", spotify_id="test_id", listened_count=5)
-    db_session.add(test_track)
-    db_session.commit()
-    response = fetch_listened_tracks(db_session)
-    assert len(response) == 1
-    fetched_track = response[0]
-    assert isinstance(fetched_track, Track)
-    assert fetched_track.title == test_track.title
-    assert fetched_track.spotify_id == test_track.spotify_id
-    assert fetched_track.listened_count == test_track.listened_count
-
-
-def test_fetch_listened_tracks_failure(db_session):
-    test_track = Track(title="Test Track", spotify_id="test_id", listened_count=0)
-    db_session.add(test_track)
-    db_session.commit()
-    with pytest.raises(HTTPException) as exc:
-        fetch_listened_tracks(db_session)
-    assert exc.value.status_code == status.HTTP_404_NOT_FOUND
-    assert exc.value.detail == "No tracks you have listened to were found."

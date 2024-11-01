@@ -1,12 +1,11 @@
 import asyncio
 
 import httpx
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
-
 from app.db.models import Track
 from app.services.token_manager import get_spotify_headers
 from app.services.utils import config
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
 
 
 async def get_current_track(db_session: Session) -> dict:
@@ -259,3 +258,25 @@ async def wait_for_song_change(db_session: Session, current_track_title: str) ->
         if new_track_title != current_track_title:
             break
         await asyncio.sleep(1)
+
+
+def fetch_listened_tracks(db_session: Session) -> list[Track]:
+    """
+    Fetch tracks from the database that have been listened to (i.e., have a nonzero listened count).
+
+    Args:
+        db_session (Session): SQLAlchemy session used for database operations.
+
+    Raises:
+        HTTPException: Listened tracks were not found.
+
+    Returns:
+        list[Track]: A list of tracks with a listened count greater than zero.
+    """
+    tracks_db = db_session.query(Track).filter(Track.listened_count > 0).all()
+    if not tracks_db:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No tracks you have listened to were found.",
+        )
+    return tracks_db
