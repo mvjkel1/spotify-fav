@@ -229,17 +229,3 @@ async def cache_playlist_tracks(playlists, db_session) -> dict[str, set]:
 
     await asyncio.gather(*[fetch_tracks(playlist) for playlist in playlists])
     return playlist_tracks_cache
-
-
-async def is_track_in_any_playlist(track_title: str, playlist_tracks: dict[str, set]) -> bool:
-    """
-    Check if a track title exists in any playlist using the cached playlist tracks.
-
-    Args:
-        track_title (str): The title of the track.
-        playlist_tracks_cache (dict[str, set]): Cached dictionary of playlist tracks.
-
-    Returns:
-        bool: True if the track is in any playlist, False otherwise.
-    """
-    return any(track_title in tracks for tracks in playlist_tracks.values())
