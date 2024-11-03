@@ -49,16 +49,26 @@ async def get_playlists_from_spotify(offset: int, limit: int, db_session: Sessio
 async def retrieve_playlist_from_spotify_by_spotify_id(
     spotify_id: str, db_session: Session
 ) -> dict:
+    """
+    Retrieve the tracks of a Spotify playlist using its Spotify ID.
+
+    Args:
+        spotify_id (str): The Spotify ID of the playlist to retrieve.
+        db_session (Session): The SQLAlchemy session to interact with the database.
+
+    Returns:
+        dict: A dictionary containing tracks from the specified playlist.
+    """
     url = f"{config['SPOTIFY_API_URL']}/playlists/{spotify_id}"
     spotify_headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=spotify_headers)
-        return response.json()["tracks"]["items"]
+        return response.json()
 
 
 async def get_all_playlists(db_session: Session) -> dict:
     """
-    Retrieve all playlists for the current user from Spotify by fetching in paginated batches.
+    Retrieve all playlists for the current user from Spotify by fetching in batches.
 
     Args:
         db_session (Session): The SQLAlchemy session to interact with the database.
@@ -170,7 +180,7 @@ def create_playlist_in_db(
         playlist_name (str): The name of the playlist.
         playlist_id (str): The ID of the playlist based on Spotify's playlist creation.
         tracks (list): A list of tracks to associate with the playlist.
-        db_session (Session): SQLAlchemy session used for database operations.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         Playlist: The created playlist object.
@@ -204,13 +214,13 @@ async def add_tracks_to_playlist(
         response.raise_for_status()
 
 
-async def cache_playlist_tracks(playlists, db_session) -> dict[str, set]:
+async def cache_playlist_tracks(playlists: list[dict], db_session: Session) -> dict[str, set]:
     """
     Fetch all tracks for each playlist and store them in a cache dictionary.
 
     Args:
-        playlists: List of playlists.
-        db_session: The SQLAlchemy session.
+        playlists (list[dict]): List of dictonaries containing the playlists details.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         dict[str, set]: A dictionary with playlist IDs as keys and sets of track titles as values.
@@ -218,7 +228,20 @@ async def cache_playlist_tracks(playlists, db_session) -> dict[str, set]:
     playlist_tracks_cache = {}
     spotify_headers = await get_spotify_headers(db_session)
 
-    async def fetch_tracks(playlist):
+    async def fetch_tracks(playlist: dict):
+        """
+        Fetch tracks for a given playlist from the Spotify API.
+
+        This inner asynchronous function retrieves track information for a
+        specific playlist identified by its Spotify ID and updates the
+        `playlist_tracks_cache` with the track names.
+
+        Args:
+            playlist (dict): A dictionary containing the details of the playlist.
+
+        Raises:
+            httpx.HTTPStatusError: If the request to the Spotify API fails.
+        """
         spotify_id = playlist["uri"].split(":")[-1]
         async with httpx.AsyncClient() as client:
             url = f"{config['SPOTIFY_API_URL']}/playlists/{spotify_id}"
