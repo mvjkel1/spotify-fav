@@ -244,7 +244,7 @@ async def update_track_listened_count(track: Track, db_session: Session) -> None
     await wait_for_song_change(track.title, db_session)
 
 
-async def wait_for_song_change(db_session: Session, current_track_title: str) -> None:
+async def wait_for_song_change(current_track_title: str, db_session: Session) -> None:
     """
     Continuously check if the current song has changed, and wait until it does.
 
