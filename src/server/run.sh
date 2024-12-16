@@ -3,9 +3,12 @@
 function show_help() {
     cat << EOF
 Usage:
-  ./run.sh server      - Run the API server
-  ./run.sh tests       - Run all pytest test cases
-  ./run.sh help        - Show this help message
+  ./run.sh server            - Run the API server
+  ./run.sh tests             - Run all pytest test cases
+  ./run.sh coverage          - Run tests with coverage
+  ./run.sh coverage_report   - Run tests with coverage and generate a report
+  ./run.sh coverage_html     - Run tests with coverage and generate an HTML report
+  ./run.sh help              - Show this help message
 EOF
 }
 
@@ -19,6 +22,22 @@ function run_tests() {
     pytest -svv
 }
 
+function run_coverage() {
+    echo "Running tests with coverage..."
+    coverage run -m pytest
+
+    case $1 in
+        report)
+            echo "Generating coverage report..."
+            coverage report -m
+            ;;
+        html)
+            echo "Generating HTML coverage report..."
+            coverage html
+            ;;
+    esac
+}
+
 function main() {
     case $1 in
         server)
@@ -26,6 +45,15 @@ function main() {
             ;;
         tests)
             run_tests
+            ;;
+        coverage)
+            run_coverage
+            ;;
+        coverage_report)
+            run_coverage report
+            ;;
+        coverage_html)
+            run_coverage html
             ;;
         help)
             show_help
