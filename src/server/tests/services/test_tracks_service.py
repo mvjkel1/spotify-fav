@@ -1,5 +1,7 @@
 import httpx
 import pytest
+from fastapi import HTTPException, status
+
 from app.db.models import Track
 from app.services.tracks_service import (
     fetch_listened_tracks,
@@ -8,7 +10,6 @@ from app.services.tracks_service import (
     get_recently_played_tracks,
     handle_playing_track,
 )
-from fastapi import HTTPException, status
 
 from ..conftest import db_session
 from ..fixtures.constants import (
