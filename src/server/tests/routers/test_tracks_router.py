@@ -1,4 +1,5 @@
-import httpx
+from unittest.mock import ANY
+
 import pytest
 from fastapi import HTTPException, status
 
@@ -10,6 +11,8 @@ from ..fixtures.routers.tracks_router_fixtures import (
     mock_get_recently_played_tracks,
     mock_is_user_authorized,
     mock_poll_playback_state,
+    mock_set_user_polling_status,
+    mock_start_polling_tracks,
 )
 
 PATH = "/tracks"
@@ -45,15 +48,22 @@ def test_get_current_track(
 
 
 @pytest.mark.parametrize(
-    "is_authorized, expected_status, expected_response",
+    "mock_return_value, mock_side_effect, expected_status_code, expected_response",
     [
+        # Test case for success
         (
-            True,
+            {"message": "Playback state polling started in the background."},
+            None,
             status.HTTP_200_OK,
             {"message": "Playback state polling started in the background."},
         ),
+        # Test case for failure
         (
-            False,
+            None,
+            HTTPException(
+                status.HTTP_401_UNAUTHORIZED,
+                "Unauthorized - to start the polling you have to login first.",
+            ),
             status.HTTP_401_UNAUTHORIZED,
             {"detail": "Unauthorized - to start the polling you have to login first."},
         ),
@@ -62,18 +72,18 @@ def test_get_current_track(
 def test_poll(
     test_client,
     db_session,
-    mock_is_user_authorized,
-    mock_poll_playback_state,
-    is_authorized,
-    expected_status,
+    mock_start_polling_tracks,
+    mock_return_value,
+    mock_side_effect,
+    expected_status_code,
     expected_response,
 ):
-    mock_is_user_authorized.return_value = is_authorized
+    mock_start_polling_tracks.return_value = mock_return_value
+    mock_start_polling_tracks.side_effect = mock_side_effect
     response = test_client.post(f"{PATH}/poll")
-    assert response.status_code == expected_status
+    assert response.status_code == expected_status_code
     assert response.json() == expected_response
-    if is_authorized:
-        mock_poll_playback_state.assert_awaited_once_with(db_session)
+    mock_start_polling_tracks.assert_awaited_once_with(ANY, db_session)
 
 
 @pytest.mark.parametrize(
