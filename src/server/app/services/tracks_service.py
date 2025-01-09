@@ -4,9 +4,10 @@ import httpx
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.db.models import Track
+from app.db.models import Track, UserPollingStatus
 from app.services.token_manager import get_spotify_headers
 from app.services.utils import config
+from app.services.user_auth_service import get_current_user_id
 
 
 async def get_current_track(db_session: Session) -> dict:
@@ -259,6 +260,17 @@ async def wait_for_song_change(current_track_title: str, db_session: Session) ->
         if new_track_title != current_track_title:
             break
         await asyncio.sleep(1)
+
+
+async def set_user_polling_status(db_session: Session, enable=True):
+    user_id = await get_current_user_id(db_session)
+    user_polling_status = (
+        db_session.query(UserPollingStatus).filter_by(user_id=user_id).first()
+    ) or UserPollingStatus(user_id=user_id)
+
+    user_polling_status.is_polling = enable
+    db_session.add(user_polling_status)
+    db_session.commit()
 
 
 def fetch_listened_tracks(db_session: Session) -> list[Track]:

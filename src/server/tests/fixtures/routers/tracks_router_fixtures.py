@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -30,4 +30,10 @@ def mock_get_recently_played_tracks():
 @pytest.fixture(scope="function")
 def mock_get_playback_state():
     with patch("app.routers.tracks_router.get_playback_state") as mock:
+        yield mock
+
+
+@pytest.fixture(scope="function")
+def mock_set_user_polling_status():
+    with patch("app.routers.tracks_router.set_user_polling_status", new_callable=AsyncMock) as mock:
         yield mock

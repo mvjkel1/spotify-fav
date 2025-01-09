@@ -10,6 +10,7 @@ from ..fixtures.routers.tracks_router_fixtures import (
     mock_get_recently_played_tracks,
     mock_is_user_authorized,
     mock_poll_playback_state,
+    mock_set_user_polling_status,
 )
 
 PATH = "/tracks"
@@ -67,6 +68,7 @@ def test_poll(
     is_authorized,
     expected_status,
     expected_response,
+    mock_set_user_polling_status,
 ):
     mock_is_user_authorized.return_value = is_authorized
     response = test_client.post(f"{PATH}/poll")
@@ -74,6 +76,10 @@ def test_poll(
     assert response.json() == expected_response
     if is_authorized:
         mock_poll_playback_state.assert_awaited_once_with(db_session)
+        mock_set_user_polling_status.assert_awaited_once_with(db_session)
+    else:
+        mock_poll_playback_state.assert_not_called()
+        mock_set_user_polling_status.assert_not_called()
 
 
 @pytest.mark.parametrize(

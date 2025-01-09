@@ -7,6 +7,7 @@ from app.services.tracks_service import (
     get_playback_state,
     get_recently_played_tracks,
     poll_playback_state,
+    set_user_polling_status,
 )
 from app.services.user_auth_service import is_user_authorized
 
@@ -48,9 +49,30 @@ async def poll(
     # it should be improved in the future
     if is_user_authorized(db_session):
         background_tasks.add_task(poll_playback_state, db_session)
+        await set_user_polling_status(db_session)
         return {"message": "Playback state polling started in the background."}
     raise HTTPException(
         status.HTTP_401_UNAUTHORIZED, "Unauthorized - to start the polling you have to login first."
+    )
+
+
+@router.post("/stop-polling")
+async def stop_polling(db_session: Session = Depends(get_db)) -> dict[str, str]:
+    """
+    Stop the playback state polling.
+
+    Args:
+        db_session (Session): The SQLAlchemy session to interact with the database.
+
+    Returns:
+        dict[str, str]: A message indicating that polling has been stopped.
+    """
+    if is_user_authorized(db_session):
+        await set_user_polling_status(db_session, False)
+        return {"message": "Polling session has been stopped successfully"}
+    raise HTTPException(
+        status.HTTP_401_UNAUTHORIZED,
+        "Unauthorized - to stop polling you have to login first.",
     )
 
 
