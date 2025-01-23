@@ -17,6 +17,11 @@ function run_server() {
     uvicorn app.main:app --reload
 }
 
+
+function run_railway() {
+    uvicorn app.main:app --host 0.0.0.0
+}
+
 function run_tests() {
     echo "Running tests..."
     pytest -svv
@@ -42,6 +47,9 @@ function main() {
     case $1 in
         server)
             run_server
+            ;;
+        railway)
+            run_railway
             ;;
         tests)
             run_tests
