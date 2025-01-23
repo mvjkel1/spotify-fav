@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class TrackBase(BaseModel):
@@ -13,8 +13,7 @@ class TrackBase(BaseModel):
 
 
 class TrackResponse(TrackBase):
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlaylistBase(BaseModel):
@@ -26,6 +25,25 @@ class PlaylistBase(BaseModel):
 
 class PlaylistResponse(PlaylistBase):
     tracks: List[TrackResponse]
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
+
+class UserSchema(BaseModel):
+    id: int
+    email: str
+    is_polling: bool
+
+
+class TokenSchema(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=6, max_length=32)
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str

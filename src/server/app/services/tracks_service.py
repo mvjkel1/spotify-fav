@@ -1,19 +1,23 @@
 import asyncio
 
 import httpx
-from app.db.models import Track, UserPollingStatus
-from app.services.token_manager import get_spotify_headers
-from app.services.user_auth_service import get_current_user_id, is_user_authorized
+from sqlalchemy import select, update
+
+from app.db.models import Track, User, user_track_association_table
+from app.services.spotify_token_manager import get_spotify_headers
 from app.services.utils import config
 from fastapi import BackgroundTasks, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.services.user_auth_service import get_current_user_db
 
-async def get_current_track(db_session: Session) -> dict:
+
+async def get_current_track(user_id: int, db_session: Session) -> dict:
     """
     Retrieve the current track the user is listening to on Spotify.
 
     Args:
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
@@ -23,11 +27,14 @@ async def get_current_track(db_session: Session) -> dict:
         HTTPException: If the request to Spotify fails or returns a non-200 status code.
     """
     url = f"{config['SPOTIFY_API_URL']}/me/player/currently-playing"
-    headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(url, headers=headers)
+            spotify_headers = await get_spotify_headers(user_id, db_session)
+            response = await client.get(url, headers=spotify_headers)
             response.raise_for_status()
+            if response.status_code == status.HTTP_204_NO_CONTENT:
+                return {"message": "No track currently playing"}
+            return response.json()
         except httpx.HTTPStatusError as exc:
             raise HTTPException(
                 status_code=exc.response.status_code,
@@ -38,31 +45,33 @@ async def get_current_track(db_session: Session) -> dict:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"Error connecting to Spotify API: {str(exc)}",
             ) from exc
-        return response.json()
 
 
-async def poll_playback_state(db_session: Session) -> None:
+async def poll_playback_state(user_id: int, db_session: Session) -> None:
     """
     Poll the playback state periodically in the background and handle the current playing track.
 
     Args:
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
     """
-    user_id = await get_current_user_id(db_session)
-    continue_polling = True
-    while continue_polling:
-        state = await get_playback_state(db_session)
-        await handle_playing_track(state, db_session)
-        current_user_polling_status = await get_user_polling_status(user_id, db_session)
-        continue_polling = current_user_polling_status.is_polling
-        await asyncio.sleep(1)
+    while is_user_polling(user_id, db_session):
+        playback_state = await get_playback_state(user_id, db_session)
+        if playback_state:
+            try:
+                await handle_playing_track(playback_state, user_id, db_session)
+            except HTTPException as exc:
+                await update_polling_status(db_session, enable=False)
+                break
+        await asyncio.sleep(5)
 
 
-async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dict:
+async def get_recently_played_tracks(user_id: int, db_session: Session, limit: int = 1) -> dict:
     """
     Retrieve the user's recently played tracks from Spotify.
 
     Args:
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
         limit (int, optional): The number of recent tracks to retrieve. Defaults to 1.
 
@@ -73,11 +82,12 @@ async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dic
         HTTPException: If the request to Spotify fails or returns a non-200 status code.
     """
     url = f"{config['SPOTIFY_API_URL']}/me/player/recently-played?limit={limit}"
-    headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(url, headers=headers)
+            spotify_headers = await get_spotify_headers(user_id, db_session)
+            response = await client.get(url, headers=spotify_headers)
             response.raise_for_status()
+            return response.json()
         except httpx.HTTPStatusError as exc:
             raise HTTPException(
                 status_code=exc.response.status_code,
@@ -88,28 +98,28 @@ async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dic
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"Error connecting to Spotify API: {str(exc)}",
             ) from exc
-        return response.json()
 
 
-async def get_playback_state(db_session: Session) -> dict:
+async def get_playback_state(user_id: int, db_session: Session) -> dict:
     """
-    Retrieve the user's current playback state from Spotify.
+    Retrieve the user's playback state.
 
     Args:
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
-
-    Returns:
-        dict: A dictionary containing the current playback state information.
 
     Raises:
         HTTPException: If the request to Spotify fails or returns a non-200 status code.
     """
     url = f"{config['SPOTIFY_API_URL']}/me/player"
-    headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(url, headers=headers)
+            spotify_headers = await get_spotify_headers(user_id, db_session)
+            response = await client.get(url, headers=spotify_headers)
             response.raise_for_status()
+            if response.status_code == status.HTTP_204_NO_CONTENT:
+                return {}
+            return response.json()
         except httpx.HTTPStatusError as exc:
             raise HTTPException(
                 status_code=exc.response.status_code,
@@ -120,23 +130,29 @@ async def get_playback_state(db_session: Session) -> dict:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"Error connecting to Spotify API: {str(exc)}",
             ) from exc
-        return response.json()
 
 
-async def handle_playing_track(state: dict, db_session: Session) -> None:
+async def handle_playing_track(playback_state: dict, user_id: str, db_session: Session) -> None:
     """
     Handle the logic for the currently playing track, updating the database as necessary.
 
     Args:
-        state (dict): The current playback state returned from Spotify.
+        playback_state (dict): The current playback state returned from Spotify.
+        user_id (int): The JWT token used to authenticate the request
         db_session (Session): The SQLAlchemy session to interact with the database.
     """
-    progress, duration, track_title, track_id = extract_track_data(state)
+    progress, duration, track_title, track_id = extract_track_data(playback_state)
     ten_seconds_passed, ten_seconds_left = check_track_progress(progress, duration)
-    track_db = get_track_from_db(db_session, track_title)
-    if state.get("is_playing"):
+    track_db = get_track_from_db(track_title, db_session)
+    if playback_state.get("is_playing"):
         await process_playing_track(
-            track_db, ten_seconds_passed, ten_seconds_left, track_title, track_id, db_session
+            track_db,
+            ten_seconds_passed,
+            ten_seconds_left,
+            track_title,
+            track_id,
+            user_id,
+            db_session,
         )
 
 
@@ -154,14 +170,16 @@ def extract_track_data(state: dict) -> tuple[str, str, str, str]:
         HTTPException: If any required data is missing.
     """
     try:
-        progress = state["progress_ms"]
-        item = state["item"]
-    except KeyError as exc:
+        track_progress = state["progress_ms"]
+        track_duration_ms = state["item"]["duration_ms"]
+        track_name = state["item"]["name"]
+        track_id = state["item"]["id"]
+    except (KeyError, TypeError) as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Missing data in playback state.",
         ) from exc
-    return progress, item["duration_ms"], item["name"], item["id"]
+    return track_progress, track_duration_ms, track_name, track_id
 
 
 def check_track_progress(progress: int, duration: int) -> tuple[bool, bool]:
@@ -182,7 +200,7 @@ def check_track_progress(progress: int, duration: int) -> tuple[bool, bool]:
     return ten_seconds_passed, ten_seconds_left
 
 
-def get_track_from_db(db_session: Session, track_title: str) -> Track | None:
+def get_track_from_db(track_title: str, db_session: Session) -> Track | None:
     """
     Query the database for a track by its title.
 
@@ -203,6 +221,7 @@ async def process_playing_track(
     ten_seconds_left: bool,
     track_title: str,
     track_id: str,
+    user_id: int,
     db_session: Session,
 ) -> None:
     """
@@ -214,53 +233,96 @@ async def process_playing_track(
         ten_seconds_left (bool): True if 10 seconds or less remain in the track.
         track_title (str): The title of the currently playing track.
         track_id (str): The Spotify ID of the currently playing track.
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
     """
     if track_db and ten_seconds_left:
-        await update_track_listened_count(track_db, db_session)
+        await update_track_listened_count(track_db, user_id, db_session)
     elif not track_db and ten_seconds_passed:
-        await create_track_entry(track_title, track_id, db_session)
+        create_track_entry(track_title, track_id, user_id, db_session)
 
 
-async def create_track_entry(track_title: str, track_id: str, db_session: Session) -> None:
+def create_track_entry(track_title: str, track_id: str, user_id: int, db_session: Session) -> None:
     """
     Create a new track entry in the database if the track is not found.
 
     Args:
         track_title (str): The title of the track.
         track_id (str): The Spotify ID of the track.
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
     """
-    track = Track(title=track_title, spotify_id=track_id, listened_count=0)
+    user = get_current_user_db(user_id, db_session)
+    track = Track(title=track_title, spotify_id=track_id)
     db_session.add(track)
+    db_session.commit()
+    new_entry = user_track_association_table.insert().values(
+        user_id=user.id,
+        track_id=track.id,
+        listened_count=0,
+    )
+    db_session.execute(new_entry)
     db_session.commit()
 
 
-async def update_track_listened_count(track: Track, db_session: Session) -> None:
+async def update_track_listened_count(track: Track, user_id: int, db_session: Session) -> None:
     """
     Update the listened count for an existing track in the database.
 
     Args:
         track (Track): The track object to update.
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
     """
-    track.listened_count += 1
+    user = get_current_user_db(user_id, db_session)
+    stmt = (
+        update(user_track_association_table)
+        .where(
+            user_track_association_table.c.user_id == user.id,
+            user_track_association_table.c.track_id == track.id,
+        )
+        .values(
+            listened_count=user_track_association_table.c.listened_count + 1,
+        )
+    )
+    db_session.execute(stmt)
     db_session.commit()
-    await wait_for_song_change(track.title, db_session)
+    await wait_for_song_change(track.title, user_id, db_session)
 
 
-async def wait_for_song_change(current_track_title: str, db_session: Session) -> None:
+def get_listened_count(track_id, user_id, db_session):
+    """
+    Get the number of times a track has been listened to by a specific user.
+
+    Args:
+        track_id (int): The ID of the track.
+        user_id (int): The ID of the logged-in user.
+        db_session (Session): The SQLAlchemy session used to interact with the database.
+
+    Returns:
+        int: The number of times the track with the given `track_id` has been listened to by the user.
+    """
+    stmt = select(user_track_association_table.c.listened_count).where(
+        user_track_association_table.c.user_id == user_id,
+        user_track_association_table.c.track_id == track_id,
+    )
+    result = db_session.execute(stmt).scalar()
+    return result or 0
+
+
+async def wait_for_song_change(track_title: str, user_id: int, db_session: Session) -> None:
     """
     Continuously check if the current song has changed, and wait until it does.
 
     Args:
-        current_track_title (str): The title of the currently playing track.
+        track_title (str): The title of the currently playing track.
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
     """
     while True:
-        state = await get_playback_state(db_session)
+        state = await get_playback_state(user_id, db_session)
         new_track_title = state["item"]["name"]
-        if new_track_title != current_track_title:
+        if new_track_title != track_title:
             break
         await asyncio.sleep(1)
 
@@ -279,38 +341,37 @@ async def update_polling_status(
         enable (bool): Whether to enable or disable polling. Default is True.
         user_id (int, optional): The ID of the user to update. If None, updates all users.
     """
-    if user_id:
-        user_polling_status = db_session.query(UserPollingStatus).filter_by(user_id=user_id).first()
-
-        if not user_polling_status:
-            user_polling_status = UserPollingStatus(user_id=user_id)
-            db_session.add(user_polling_status)
-
-        user_polling_status.is_polling = enable
-    else:
-        db_session.query(UserPollingStatus).update({"is_polling": enable})
+    users = (
+        [db_session.query(User).filter_by(id=user_id).first()]
+        if user_id
+        else db_session.query(User).all()
+    )
+    for user in users:
+        user.is_polling = enable
     db_session.commit()
 
 
-async def get_user_polling_status(user_id: int, db_session: Session) -> UserPollingStatus:
+def is_user_polling(user_id: int, db_session: Session) -> bool:
     """
     Retrieve the polling status for the currently logged-in user.
 
     Args:
-        user_id (int): The user ID to get the polling status of.
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
-        UserPollingStatus: The polling status record for the user, or None if it does not exist.
+        bool: True if user is polling, False otherwise.
     """
-    return db_session.query(UserPollingStatus).filter_by(user_id=user_id).first()
+    user = db_session.query(User).filter_by(id=user_id).first()
+    return user.is_polling
 
 
-def fetch_listened_tracks(db_session: Session) -> list[Track]:
+async def fetch_listened_tracks(user_id: int, db_session: Session) -> list[Track]:
     """
     Fetch tracks from the database that have been listened to (i.e., have a nonzero listened count).
 
     Args:
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Raises:
@@ -319,23 +380,29 @@ def fetch_listened_tracks(db_session: Session) -> list[Track]:
     Returns:
         list[Track]: A list of tracks with a listened count greater than zero.
     """
-    tracks_db = db_session.query(Track).filter(Track.listened_count > 0).all()
-    if not tracks_db:
+    tracks = (
+        db_session.query(Track)
+        .join(user_track_association_table, Track.id == user_track_association_table.c.track_id)
+        .filter(user_track_association_table.c.user_id == user_id)
+        .all()
+    )
+    if not tracks:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No tracks you have listened to were found.",
         )
-    return tracks_db
+    return tracks
 
 
 async def start_polling_tracks(
-    background_tasks: BackgroundTasks, db_session: Session
+    background_tasks: BackgroundTasks, user_id: int, db_session: Session
 ) -> dict[str, str]:
     """
      Handle the logic for starting polling of tracks in the background.
 
      Args:
          background_tasks (BackgroundTasks): The background task manager.
+         user_id (int): The ID of logged in user.
          db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
@@ -344,28 +411,25 @@ async def start_polling_tracks(
      Raises:
          HTTPException: User is not authorized or polling is already active.
     """
-    user_id = await get_current_user_id(db_session)
-    current_user_polling_status = await get_user_polling_status(user_id, db_session)
-    if current_user_polling_status.is_polling:
+    user = get_current_user_db(user_id, db_session)
+    if not user.spotify_uid:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authorize your Spotify account first.")
+    if user.is_polling:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "The polling session for current user has been already started.",
         )
-    if is_user_authorized(db_session):
-        await update_polling_status(db_session, enable=True, user_id=user_id)
-        background_tasks.add_task(poll_playback_state, db_session)
-        return {"message": "Playback state polling started in the background."}
-    raise HTTPException(
-        status.HTTP_401_UNAUTHORIZED, "Unauthorized - to start the polling you have to login first."
-    )
+    await update_polling_status(db_session, enable=True, user_id=user_id)
+    background_tasks.add_task(poll_playback_state, user_id, db_session)
+    return {"message": "Playback state polling started in the background."}
 
 
-async def stop_polling_tracks(db_session: Session) -> dict[str, str]:
+async def stop_polling_tracks(user_id: int, db_session: Session) -> dict[str, str]:
     """
     Handle the logic for stopping the tracks polling process.
 
     Args:
-        background_tasks (BackgroundTasks): The background task manager.
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
@@ -374,17 +438,13 @@ async def stop_polling_tracks(db_session: Session) -> dict[str, str]:
     Raises:
         HTTPException: User is not authorized or polling is not active.
     """
-    user_id = await get_current_user_id(db_session)
-    current_user_polling_status = await get_user_polling_status(user_id, db_session)
-    if not current_user_polling_status.is_polling:
+    user = get_current_user_db(user_id, db_session)
+    if not user.spotify_uid:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authorize your Spotify account first.")
+    if not user.is_polling:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "The polling session for current user was not started.",
+            "The polling session for current user has not started.",
         )
-    if is_user_authorized(db_session):
-        await update_polling_status(db_session, enable=False, user_id=user_id)
-        return {"message": "Polling session has been stopped successfully"}
-    raise HTTPException(
-        status.HTTP_401_UNAUTHORIZED,
-        "Unauthorized - to stop polling you have to login first.",
-    )
+    await update_polling_status(db_session, enable=False, user_id=user_id)
+    return {"message": "Polling session has been stopped successfully"}

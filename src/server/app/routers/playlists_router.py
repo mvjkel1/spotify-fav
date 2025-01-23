@@ -1,3 +1,4 @@
+from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -8,12 +9,15 @@ from app.services.playlists_service import (
     process_playlist_creation,
     retrieve_playlist_from_spotify_by_spotify_id,
 )
+from app.db.schemas import UserSchema
+from app.services.user_auth_service import get_current_active_user
 
 router = APIRouter(tags=["playlists"], prefix="/playlists")
 
 
 @router.get("")
 async def get_playlists(
+    current_user: Annotated[UserSchema, Depends(get_current_active_user)],
     offset: int = Query(0),
     limit: int = Query(20, ge=1),
     db_session: Session = Depends(get_db),
@@ -29,11 +33,14 @@ async def get_playlists(
     Returns:
         dict: A dictionary containing the playlists retrieved from Spotify.
     """
-    return await get_playlists_from_spotify(offset, limit, db_session)
+    return await get_playlists_from_spotify(offset, limit, current_user.id, db_session)
 
 
 @router.get("/all")
-async def get_all_spotify_playlists(db_session: Session = Depends(get_db)) -> dict:
+async def get_all_spotify_playlists(
+    current_user: Annotated[UserSchema, Depends(get_current_active_user)],
+    db_session: Session = Depends(get_db),
+) -> dict:
     """
     Retrieve all Spotify playlists.
 
@@ -43,12 +50,14 @@ async def get_all_spotify_playlists(db_session: Session = Depends(get_db)) -> di
     Returns:
         dict: A dictionary containing all playlists retrieved from Spotify.
     """
-    return await get_all_playlists(db_session)
+    return await get_all_playlists(current_user.id, db_session)
 
 
 @router.get("/playlists/{id}")
 async def get_playlist_by_spotify_id(
-    spotify_id: str, db_session: Session = Depends(get_db)
+    spotify_id: str,
+    current_user: Annotated[UserSchema, Depends(get_current_active_user)],
+    db_session: Session = Depends(get_db),
 ) -> dict:
     """
     Retrieve a playlist from the database by its Spotify ID.
@@ -60,11 +69,17 @@ async def get_playlist_by_spotify_id(
     Returns:
         dict: A dictionary containing the retrieved playlist information.
     """
-    return await retrieve_playlist_from_spotify_by_spotify_id(spotify_id, db_session)
+    return await retrieve_playlist_from_spotify_by_spotify_id(
+        spotify_id, current_user.id, db_session
+    )
 
 
 @router.post("/create")
-async def create_playlist(playlist_name: str, db_session: Session = Depends(get_db)) -> dict:
+async def create_playlist(
+    playlist_name: str,
+    current_user: Annotated[UserSchema, Depends(get_current_active_user)],
+    db_session: Session = Depends(get_db),
+) -> dict:
     """
     Create a new playlist in the local database and on Spotify.
 
@@ -75,4 +90,4 @@ async def create_playlist(playlist_name: str, db_session: Session = Depends(get_
     Returns:
         dict: A dictionary containing the result message.
     """
-    return await process_playlist_creation(playlist_name, db_session)
+    return await process_playlist_creation(playlist_name, current_user.id, db_session)
