@@ -1,5 +1,5 @@
 from typing import Annotated
-from app.db.database import get_db
+from app.db.database import async_get_db
 from app.services.tracks_service import (
     fetch_listened_tracks,
     get_current_track,
@@ -10,7 +10,7 @@ from app.services.tracks_service import (
 )
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from app.db.schemas import UserSchema
 from app.services.user_auth_service import get_current_active_user
@@ -21,14 +21,14 @@ router = APIRouter(tags=["tracks"], prefix="/tracks")
 @router.get("/current")
 async def current_track(
     current_user: Annotated[UserSchema, Depends(get_current_active_user)],
-    db_session: Session = Depends(get_db),
+    db_session: AsyncSession = Depends(async_get_db),
 ) -> dict:
     """
     Retrieve the current track being played.
 
     Args:
         current_user (UserSchema): The currently authenticated user, provided by the dependency get_current_active_user.
-        db_session (Session): The SQLAlchemy session used to query the database for the user's current track.
+        db_session (AsyncSession): The SQLAlchemy session used to query the database for the user's current track.
     Returns:
         dict: A dictionary containing details of the current track.
     """
@@ -39,7 +39,7 @@ async def current_track(
 async def start_polling(
     background_tasks: BackgroundTasks,
     current_user: Annotated[UserSchema, Depends(get_current_active_user)],
-    db_session: Session = Depends(get_db),
+    db_session: AsyncSession = Depends(async_get_db),
 ) -> dict[str, str]:
     """
     Start polling the playback state in the background.
@@ -47,7 +47,7 @@ async def start_polling(
     Args:
         background_tasks (BackgroundTasks): The background task manager used to schedule the polling task.
         current_user (UserSchema): The currently authenticated user, provided by the dependency get_current_active_user.
-        db_session (Session): The SQLAlchemy session used to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy session used to interact with the database.
 
     Raises:
         HTTPException: User is not authorized to start the polling process (missing token).
@@ -61,14 +61,14 @@ async def start_polling(
 @router.post("/polling/stop")
 async def stop_polling(
     current_user: Annotated[UserSchema, Depends(get_current_active_user)],
-    db_session: Session = Depends(get_db),
+    db_session: AsyncSession = Depends(async_get_db),
 ) -> dict[str, str]:
     """
     Stop the playback state polling.
 
     Args:
         current_user (UserSchema): The currently authenticated user, provided by the dependency get_current_active_user.
-        db_session (Session): The SQLAlchemy session used to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy session used to interact with the database.
 
     Returns:
         dict[str, str]: A message indicating that polling has been stopped.
@@ -80,7 +80,7 @@ async def stop_polling(
 async def get_recently_played(
     current_user: Annotated[UserSchema, Depends(get_current_active_user)],
     limit: int = Query(1, ge=1, le=50),
-    db_session: Session = Depends(get_db),
+    db_session: AsyncSession = Depends(async_get_db),
 ) -> dict:
     """
     Retrieve recently played tracks.
@@ -88,7 +88,7 @@ async def get_recently_played(
     Args:
         current_user (UserSchema): The currently authenticated user, provided by the dependency get_current_active_user.
         limit (int): The number of recently played tracks to retrieve. Default is 1.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         dict: A dictionary containing details of the recently played tracks.
@@ -99,14 +99,14 @@ async def get_recently_played(
 @router.get("/playback/state")
 async def fetch_playback_state(
     current_user: Annotated[UserSchema, Depends(get_current_active_user)],
-    db_session: Session = Depends(get_db),
+    db_session: AsyncSession = Depends(async_get_db),
 ) -> dict:
     """
     Retrieve the current playback state.
 
     Args:
         current_user (UserSchema): The currently authenticated user, provided by the dependency get_current_active_user.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         dict: A dictionary containing details of the current playback state.
@@ -118,6 +118,6 @@ async def fetch_playback_state(
 @router.get("/polled")
 async def get_polled_tracks(
     current_user: Annotated[UserSchema, Depends(get_current_active_user)],
-    db_session: Session = Depends(get_db),
+    db_session: AsyncSession = Depends(async_get_db),
 ):
     return await fetch_listened_tracks(current_user.id, db_session)
