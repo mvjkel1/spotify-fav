@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 from itertools import chain
 
 import httpx
@@ -303,13 +304,13 @@ async def cache_playlist_tracks(
         token=config["REDIS_TOKEN"],
     )
 
+    def generate_hash(tracks: set) -> str:
+        """Generate a SHA-256 hash of the sorted track names."""
+        return hashlib.sha256(",".join(sorted(tracks)).encode()).hexdigest()
+
     async def fetch_tracks(playlist: dict) -> None:
         """
-        Fetch tracks for a given playlist from the Spotify API.
-
-        This inner asynchronous function retrieves track information for a
-        specific playlist identified by its Spotify ID and updates the
-        `playlist_tracks_cache` with the track names.
+        Fetch tracks for a given playlist and update cache if changes in playlists tracks are detected.
 
         Args:
             playlist (dict): A dictionary containing the details of the playlist.
@@ -319,19 +320,25 @@ async def cache_playlist_tracks(
         """
         spotify_id = playlist["uri"].split(":")[-1]
         cache_key = f"playlist:{spotify_id}:{user_id}:tracks"
+        hash_key = f"playlist:{spotify_id}:{user_id}:hash"
         cached_tracks = await redis_client.get(cache_key)
-        if cached_tracks:
-            playlist_tracks_cache[spotify_id] = set(cached_tracks.split(","))
-            return
-
+        cached_hash = await redis_client.get(hash_key)
+        cached_tracks_set = set(cached_tracks.decode().split(",")) if cached_tracks else set()
         async with httpx.AsyncClient() as client:
             url = f"{config['SPOTIFY_API_URL']}/playlists/{spotify_id}"
             response = await client.get(url, headers=spotify_headers)
             response.raise_for_status()
             playlist_details = response.json()["tracks"]["items"]
             tracks = {item["track"]["name"] for item in playlist_details}
-            await redis_client.set(cache_key, ",".join(tracks), ex=3600)
-            playlist_tracks_cache[spotify_id] = tracks
+
+        new_hash = generate_hash(tracks)
+        if cached_hash and cached_hash.decode() == new_hash:
+            playlist_tracks_cache[spotify_id] = cached_tracks_set
+            return
+
+        await redis_client.set(cache_key, ",".join(tracks), ex=3600)
+        await redis_client.set(hash_key, new_hash, ex=3600)
+        playlist_tracks_cache[spotify_id] = tracks
 
     await asyncio.gather(*[fetch_tracks(playlist) for playlist in playlists])
     await redis_client.close()
