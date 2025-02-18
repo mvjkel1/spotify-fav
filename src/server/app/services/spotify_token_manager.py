@@ -45,6 +45,7 @@ async def save_spotify_token(
     await db_session.commit()
 
 
+# TODO: REFACTOR THAT, DOES TOO MUCH
 async def get_spotify_token(user_id: int, db_session: AsyncSession) -> dict[str, str]:
     """
     Retrieve the current Spotify token if it is still valid, or refresh it.
@@ -59,14 +60,14 @@ async def get_spotify_token(user_id: int, db_session: AsyncSession) -> dict[str,
     Raises:
         HTTPException: If the token does not exist or refresh fails.
     """
-    token = await get_spotify_token_from_db(user_id, db_session)
-    if not token.is_expired():
+    spotify_token = await get_spotify_token_from_db(user_id, db_session)
+    if not spotify_token.is_expired():
         return {
-            "access_token": token.access_token,
-            "refresh_token": token.refresh_token,
-            "expires_at": token.expires_at,
+            "access_token": spotify_token.access_token,
+            "refresh_token": spotify_token.refresh_token,
+            "expires_at": spotify_token.expires_at,
         }
-    return await handle_spotify_token_refresh(token.refresh_token, user_id, db_session)
+    return await handle_spotify_token_refresh(spotify_token.refresh_token, user_id, db_session)
 
 
 async def get_spotify_token_from_db(user_id: int, db_session: AsyncSession) -> SpotifyAccessToken:
@@ -114,7 +115,8 @@ async def handle_spotify_token_refresh(
         return await refresh_spotify_access_token(refresh_token, user_id, db_session)
     except HTTPException as exc:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token refresh failed: {str(exc)}"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Spotify token refresh failed: {str(exc)}",
         ) from exc
 
 
@@ -157,10 +159,15 @@ async def refresh_spotify_access_token(
             return new_spotify_token
         except httpx.HTTPStatusError as exc:
             raise HTTPException(
-                f"Failed to refresh token: {exc.response.status_code} - {exc.response.text}"
+                status_code=exc.response.status_code,
+                detail=f"Failed to refresh token: {exc.response.status_code} - {exc.response.content.decode()}",
             ) from exc
+
         except httpx.TimeoutException as exc:
-            raise HTTPException("Request timed out while refreshing token") from exc
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Request timed out while refreshing token",
+            ) from exc
 
 
 async def get_spotify_headers(user_id: int, db_session: AsyncSession) -> dict[str, str]:

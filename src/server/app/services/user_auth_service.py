@@ -20,8 +20,8 @@ PWD_CONTEXT = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 async def handle_user_register(
-    db_session: AsyncSession,
     user: UserRegister,
+    db_session: AsyncSession,
 ) -> dict:
     """
     Handles the user registration process.
