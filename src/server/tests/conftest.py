@@ -1,17 +1,14 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 import pytest_asyncio
-from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio.session import async_sessionmaker
-from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from app.db.database import Base, async_get_db
 from app.main import app
 from app.db.schemas import UserSchema
 from app.services.user_auth_service import get_current_active_user
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 SQLITE_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -67,5 +64,5 @@ def test_client(db_session, mock_current_user):
     app.dependency_overrides[async_get_db] = override_get_db
     app.dependency_overrides[get_current_active_user] = mock_get_current_active_user
     app.router.lifespan_context = test_lifespan
-    with TestClient(app) as test_client:
+    with AsyncClient(app) as test_client:
         yield test_client
