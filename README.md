@@ -1,3 +1,7 @@
+> [!NOTE]
+>
+> I am currently working on adjusting unit tests, most of them are not ready yet.
+
 # spotify-fav
 
 _For those who (really) don't like the Spotify "next song" algorithm_
