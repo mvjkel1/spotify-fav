@@ -1,11 +1,10 @@
 from time import time
 
 import httpx
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
-
 from app.db.models import AccessToken
 from app.services.utils import config
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
 
 
 class RefreshTokenError(Exception):
