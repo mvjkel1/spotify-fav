@@ -13,7 +13,7 @@ env_path = find_dotenv()
 config = dotenv_values(env_path)
 
 
-async def get_current_user(db_session: Session) -> dict:
+async def get_current_user(db_session: Session) -> dict[str, str]:
     """
     Retrieve the current user's Spotify profile information.
 
@@ -21,7 +21,7 @@ async def get_current_user(db_session: Session) -> dict:
         db_session (Session): SQLAlchemy session to get Spotify headers.
 
     Returns:
-        dict: A dictionary containing the current user's profile information.
+        dict[str, str]: A dictionary containing the current user's profile information.
 
     Raises:
         HTTPException: If the user data cannot be retrieved from Spotify.
@@ -61,12 +61,12 @@ async def get_current_user_id(db_session: Session) -> str:
     return current_user_id
 
 
-async def generate_spotify_login_url() -> dict:
+async def generate_spotify_login_url() -> dict[str, str]:
     """
     Generate the Spotify OAuth2 login URL.
 
     Returns:
-        dict: A dictionary containing the login URL for Spotify OAuth2 authorization.
+        dict[str, str]: A dictionary containing the login URL for Spotify OAuth2 authorization.
     """
     params = {
         "response_type": "code",
@@ -112,12 +112,12 @@ async def handle_spotify_callback(code: str, db_session: Session) -> RedirectRes
     return RedirectResponse(url=config["CALLBACK_REDIRECT_URL"])
 
 
-def build_auth_headers() -> dict:
+def build_auth_headers() -> dict[str, str]:
     """
     Build the authorization headers required for token exchange with Spotify.
 
     Returns:
-        dict: A dictionary containing the necessary authorization headers.
+        dict[str, str]: A dictionary containing the necessary authorization headers.
     """
     auth_header = base64.b64encode(
         f"{config['CLIENT_ID']}:{config['CLIENT_SECRET']}".encode()
@@ -128,7 +128,7 @@ def build_auth_headers() -> dict:
     }
 
 
-def build_token_request_data(code: str) -> dict:
+def build_token_request_data(code: str) -> dict[str, str]:
     """
     Build the form data for exchanging the authorization code for tokens.
 
@@ -136,7 +136,7 @@ def build_token_request_data(code: str) -> dict:
         code (str): The authorization code received from Spotify.
 
     Returns:
-        dict: A dictionary containing the form data for token exchange.
+        dict[str, str]: A dictionary containing the form data for token exchange.
     """
     return {
         "code": code,
@@ -145,7 +145,7 @@ def build_token_request_data(code: str) -> dict:
     }
 
 
-async def exchange_token_with_spotify(form_data: dict, headers: dict) -> dict:
+async def exchange_token_with_spotify(form_data: dict, headers: dict) -> dict[str, str]:
     """
     Exchange the authorization code with Spotify for access and refresh tokens.
 
@@ -154,7 +154,7 @@ async def exchange_token_with_spotify(form_data: dict, headers: dict) -> dict:
         headers (dict): The authorization headers.
 
     Returns:
-        dict: A dictionary containing the tokens from Spotify.
+        dict[str, str]: A dictionary containing the tokens from Spotify.
 
     Raises:
         HTTPException: If an error occurs during the HTTP request.
@@ -165,7 +165,6 @@ async def exchange_token_with_spotify(form_data: dict, headers: dict) -> dict:
                 config["SPOTIFY_TOKEN_URL"], data=form_data, headers=headers
             )
         response.raise_for_status()
-        return response.json()
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=exc.response.status_code, detail=f"HTTP error occurred: {exc}"
@@ -174,14 +173,18 @@ async def exchange_token_with_spotify(form_data: dict, headers: dict) -> dict:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Network error occurred: {exc}"
         ) from exc
+    return response.json()
 
 
-def is_user_authorized(db_session: Session):
+def is_user_authorized(db_session: Session) -> bool:
     """
     Check if the user is authorized based on the presence of a token in the database.
 
     Args:
         db_session (Session): The current database session.
+
+    Returns:
+        bool: True if user is authorized, False otherwise.
     """
     try:
         get_token_from_db(db_session)
