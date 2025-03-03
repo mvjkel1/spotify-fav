@@ -147,7 +147,7 @@ async def handle_playing_track(
     """
     progress, duration, track_title, track_id = extract_track_data(playback_state)
     ten_seconds_passed, ten_seconds_left = check_track_progress(progress, duration)
-    track_db = get_track_from_db(track_title, db_session)
+    track_db = await get_track_from_db(track_title, db_session)
     if playback_state.get("is_playing"):
         await process_playing_track(
             track_db,
