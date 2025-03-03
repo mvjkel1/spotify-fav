@@ -1,7 +1,9 @@
 from app.db.database import get_db
-from app.services.user_auth_service import (generate_spotify_login_url,
-                                            get_current_user,
-                                            handle_spotify_callback)
+from app.services.user_auth_service import (
+    generate_spotify_login_url,
+    get_current_user,
+    handle_spotify_callback,
+)
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -35,9 +37,7 @@ async def login() -> dict:
 
 
 @router.get("/callback")
-async def callback(
-    request: Request, db_session: Session = Depends(get_db)
-) -> RedirectResponse:
+async def callback(request: Request, db_session: Session = Depends(get_db)) -> RedirectResponse:
     """
     Handle the Spotify OAuth2 callback by exchanging the authorization code for access tokens.
 

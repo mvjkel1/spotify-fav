@@ -17,17 +17,13 @@ async def current_track(db_session: Session = Depends(get_db)) -> dict:
 
 
 @router.post("/poll")
-async def poll(
-    background_tasks: BackgroundTasks, db_session: Session = Depends(get_db)
-) -> dict:
+async def poll(background_tasks: BackgroundTasks, db_session: Session = Depends(get_db)) -> dict:
     background_tasks.add_task(poll_playback_state, db_session)
     return {"message": "Playback state polling started in the background."}
 
 
 @router.get("/recently-played")
-async def get_recently_played(
-    db_session: Session = Depends(get_db), limit: int = 1
-) -> dict:
+async def get_recently_played(db_session: Session = Depends(get_db), limit: int = 1) -> dict:
     return await get_recently_played_track(db_session, limit)
 
 
