@@ -1,51 +1,48 @@
-import httpx
 import pytest
 from fastapi import HTTPException, status
 
 from ..conftest import db_session, test_client
-from ..fixtures.constants import GET_CURRENT_USER_URL, SPOTIFY_HEADERS_EXAMPLE, USER_DATA_EXAMPLE
+from ..fixtures.constants import USER_DATA_EXAMPLE
 from ..fixtures.user_auth_fixtures import (
-    mock_async_client_get,
     mock_generate_spotify_login_url,
-    mock_get_spotify_headers,
     mock_handle_spotify_callback,
     mock_config_env,
+    mock_get_current_user_router,
 )
 
 
-@pytest.mark.parametrize("expected_output", [USER_DATA_EXAMPLE])
-def test_get_current_user_success(
-    mock_async_client_get,
-    mock_get_spotify_headers,
+@pytest.mark.parametrize(
+    "mock_return_value, mock_side_effect, expected_status, expected_response",
+    [
+        (
+            USER_DATA_EXAMPLE,
+            None,
+            status.HTTP_200_OK,
+            USER_DATA_EXAMPLE,
+        ),
+        (
+            None,
+            HTTPException(status.HTTP_400_BAD_REQUEST, detail="ERROR: Bad request"),
+            status.HTTP_400_BAD_REQUEST,
+            {"detail": "ERROR: Bad request"},
+        ),
+    ],
+)
+def test_get_current_user(
     test_client,
-    expected_output,
+    db_session,
+    mock_get_current_user_router,
+    mock_return_value,
+    mock_side_effect,
+    expected_status,
+    expected_response,
 ):
-    mock_async_client_get.return_value = httpx.Response(status_code=200, json=USER_DATA_EXAMPLE)
+    mock_get_current_user_router.return_value = mock_return_value
+    mock_get_current_user_router.side_effect = mock_side_effect
     response = test_client.get("/user-auth/me")
-    assert response.json() == expected_output
-    mock_async_client_get.assert_awaited_with(
-        GET_CURRENT_USER_URL,
-        headers=SPOTIFY_HEADERS_EXAMPLE,
-    )
-
-
-def test_get_current_user_unauthorized(test_client):
-    response = test_client.get("/user-auth/me")
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert (
-        "Access token does not exist in the database, login first to generate one."
-        in response.json()["detail"]
-    )
-
-
-def test_get_current_user_failure(mock_async_client_get, mock_get_spotify_headers, test_client):
-    mock_async_client_get.side_effect = HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST, detail="ERROR: Bad request"
-    )
-    response = test_client.get("/user-auth/me")
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert response.json()["detail"] == "ERROR: Bad request"
-    mock_async_client_get.assert_awaited_with(GET_CURRENT_USER_URL, headers=SPOTIFY_HEADERS_EXAMPLE)
+    assert response.status_code == expected_status
+    assert response.json() == expected_response
+    mock_get_current_user_router.assert_awaited_with(db_session)
 
 
 def test_login(test_client, mock_generate_spotify_login_url):
