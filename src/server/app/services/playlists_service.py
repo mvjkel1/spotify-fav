@@ -13,7 +13,7 @@ config = dotenv_values(env_path)
 
 async def get_my_playlists_from_spotify(
     user_id: str, offset: int, limit: int, db_session: Session
-) -> dict[str, str]:
+) -> dict:
     """
     Retrieve the current user's playlists from Spotify.
 
@@ -24,7 +24,7 @@ async def get_my_playlists_from_spotify(
         db_session (Session): SQLAlchemy session used to obtain the Spotify headers.
 
     Returns:
-        dict[str, str]: A JSON response from Spotify containing the user's playlists.
+        dict: A JSON response from Spotify containing the user's playlists.
 
     Raises:
         HTTPException: If the Spotify API request fails, an HTTPException is raised with the

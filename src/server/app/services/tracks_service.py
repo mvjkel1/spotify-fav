@@ -7,7 +7,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 
-async def get_current_track(db_session: Session) -> dict[str, str]:
+async def get_current_track(db_session: Session) -> dict:
     """
     Retrieve the current track the user is listening to on Spotify.
 
@@ -15,7 +15,7 @@ async def get_current_track(db_session: Session) -> dict[str, str]:
         db_session (Session): SQLAlchemy session to get Spotify headers.
 
     Returns:
-        dict[str, str]: A dictionary containing information about the current track.
+        dict: A dictionary containing information about the current track.
 
     Raises:
         HTTPException: If the request to Spotify fails or returns a non-200 status code.
@@ -52,7 +52,7 @@ async def poll_playback_state(db_session: Session) -> None:
         await asyncio.sleep(1)
 
 
-async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dict[str, str]:
+async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dict:
     """
     Retrieve the user's recently played tracks from Spotify.
 
@@ -61,7 +61,7 @@ async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dic
         limit (int, optional): The number of recent tracks to retrieve. Defaults to 1.
 
     Returns:
-        dict[str, str]: A dictionary containing information about the recently played track(s).
+        dict: A dictionary containing information about the recently played track(s).
 
     Raises:
         HTTPException: If the request to Spotify fails or returns a non-200 status code.
@@ -85,7 +85,7 @@ async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dic
         return response.json()
 
 
-async def get_playback_state(db_session: Session) -> dict[str, str]:
+async def get_playback_state(db_session: Session) -> dict:
     """
     Retrieve the user's current playback state from Spotify.
 
@@ -93,7 +93,7 @@ async def get_playback_state(db_session: Session) -> dict[str, str]:
         db_session (Session): SQLAlchemy session to get Spotify headers.
 
     Returns:
-        dict[str, str]: A dictionary containing the current playback state information.
+        dict: A dictionary containing the current playback state information.
 
     Raises:
         HTTPException: If the request to Spotify fails or returns a non-200 status code.

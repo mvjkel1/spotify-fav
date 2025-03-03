@@ -13,7 +13,7 @@ env_path = find_dotenv()
 config = dotenv_values(env_path)
 
 
-async def get_current_user(db_session: Session) -> dict[str, str]:
+async def get_current_user(db_session: Session) -> dict:
     """
     Retrieve the current user's Spotify profile information.
 
@@ -21,7 +21,7 @@ async def get_current_user(db_session: Session) -> dict[str, str]:
         db_session (Session): SQLAlchemy session to get Spotify headers.
 
     Returns:
-        dict[str, str]: A dictionary containing the current user's profile information.
+        dict: A dictionary containing the current user's profile information.
 
     Raises:
         HTTPException: If the user data cannot be retrieved from Spotify.
