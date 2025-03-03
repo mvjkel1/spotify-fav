@@ -2,7 +2,7 @@
 
 ## Current status
 
-This project is in the initial development phase, so the README is a work in progress. Updates will be made as development continues.
+This project is currently in its early development stages, and the README is being actively updated. I will continue to refine and expand it as the project evolves.
 
 ### Overview
 
