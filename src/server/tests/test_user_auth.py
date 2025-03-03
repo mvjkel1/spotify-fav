@@ -49,7 +49,9 @@ def mock_config():
 )
 @patch("app.endpoints.user_auth.get_spotify_headers", return_value=HEADERS)
 @pytest.mark.parametrize("expected_output", [USER_DATA])
-async def test_get_current_user_success(mock_spotify_headers, mock_async_client, expected_output):
+async def test_get_current_user_success(
+    mock_spotify_headers, mock_async_client, expected_output
+):
     result = await get_current_user()
     assert result == expected_output
     mock_async_client.assert_called_once_with(
@@ -62,7 +64,9 @@ async def test_get_current_user_success(mock_spotify_headers, mock_async_client,
 @patch("app.endpoints.user_auth.get_spotify_headers", return_value=HEADERS)
 @patch(
     "app.endpoints.user_auth.httpx.AsyncClient.get",
-    side_effect=HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"),
+    side_effect=HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
+    ),
 )
 @pytest.mark.parametrize(
     "expected_status_code, expected_message",
@@ -91,7 +95,9 @@ async def test_get_current_user_id_success(mock_get_current_user, db_session):
 @pytest.mark.asyncio
 @patch(
     "app.endpoints.user_auth.get_current_user",
-    side_effect=HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"),
+    side_effect=HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
+    ),
 )
 @pytest.mark.parametrize(
     "expected_status_code, expected_message",
@@ -167,3 +173,27 @@ async def test_callback_success(mock_mock_async_client, mock_save_token, db_sess
     response = await callback(request, db_session)
     assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
     mock_save_token.assert_called_once_with("123", "321", 0, db_session)
+
+
+@pytest.mark.asyncio
+@patch(
+    "app.endpoints.user_auth.httpx.AsyncClient.post",
+    return_value=httpx.Response(
+        200, json={"access_token": "123", "XXX": "YYY", "ZZZ": 0}
+    ),
+)
+async def test_callback_failure(mock_mock_async_client, db_session):
+    query_string = "code=code123"
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "headers": {},
+            "query_string": query_string,
+            "url": "url",
+        }
+    )
+    with pytest.raises(HTTPException) as exc:
+        response = await callback(request, db_session)
+    assert exc.value.detail == "Failed to retrieve tokens from Spotify API"
+    assert exc.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
