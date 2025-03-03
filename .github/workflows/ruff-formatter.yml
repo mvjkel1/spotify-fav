@@ -1,4 +1,4 @@
-name: Run format.sh script
+name: Run ruff formatter
 
 on: [push]
 
@@ -20,7 +20,7 @@ jobs:
         run: |
           pip install ruff
 
-      - name: Run format.sh script
+      - name: Run ruff formatter
         run: |
           ruff format src/server/app --line-length 100
           ruff format src/server/tests --line-length 100
