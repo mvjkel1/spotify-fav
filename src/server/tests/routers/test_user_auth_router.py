@@ -3,11 +3,10 @@ from fastapi import HTTPException, status
 
 from ..conftest import db_session, test_client
 from ..fixtures.constants import USER_DATA_EXAMPLE
-from ..fixtures.user_auth_fixtures import (
+from ..fixtures.routers.user_auth_router_fixtures import (
     mock_generate_spotify_login_url,
-    mock_handle_spotify_callback,
-    mock_config_env,
     mock_get_current_user_router,
+    mock_handle_spotify_callback,
 )
 
 
@@ -46,7 +45,9 @@ def test_get_current_user(
 
 
 def test_login(test_client, mock_generate_spotify_login_url):
-    mock_generate_spotify_login_url.return_value = {"login_url": "https://fake-spotify-login.com"}
+    mock_generate_spotify_login_url.return_value = {
+        "login_url": "https://fake-spotify-login.com"
+    }
     response = test_client.get("/user-auth/login")
     assert response.status_code == 200
     assert response.json() == {"login_url": "https://fake-spotify-login.com"}
