@@ -64,13 +64,6 @@ async def test_get_current_user_id_failure(mock_get_current_user_service, db_ses
     assert exc.value.detail == "Failed to fetch current user ID"
 
 
-async def test_generate_spotify_login_url(mock_config_env, mock_generate_random_string):
-    result = generate_spotify_login_url()
-    assert result == {
-        "login_url": "SPOTIFY_AUTH_URL?response_type=code&client_id=CLIENT_ID&scope=SPOTIFY_API_SCOPES&redirect_uri=REDIRECT_URI&state=str1ng"
-    }
-
-
 @pytest.mark.asyncio
 async def test_handle_spotify_callback_missing_code(db_session):
     with pytest.raises(HTTPException) as exc:
@@ -132,3 +125,10 @@ async def test_handle_spotify_callback_spotify_request_error(mock_async_client_p
         await handle_spotify_callback("valid_code", db_session)
     assert exc.value.status_code == status.HTTP_502_BAD_GATEWAY
     assert "Network error occurred: Request failed" in exc.value.detail
+
+
+def test_generate_spotify_login_url(mock_generate_random_string):
+    result = generate_spotify_login_url()
+    assert result == {
+        "login_url": "SPOTIFY_AUTH_URL?response_type=code&client_id=CLIENT_ID&scope=SPOTIFY_API_SCOPES&redirect_uri=REDIRECT_URI&state=str1ng"
+    }
