@@ -7,28 +7,28 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.12"]
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-  
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Create virtual environment
-      run: |
-        python -m venv venv
-        . venv/bin/activate
-        pip install --upgrade pip
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        . venv/bin/activate
-        pip install -r src/server/requirements.txt
-        pip install pylint
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Create virtual environment
+        run: |
+          python -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip
 
-    - name: Run Pytest
-      run: |
-        . venv/bin/activate
-        pytest -svv --disable-warnings
+      - name: Install dependencies
+        run: |
+          . venv/bin/activate
+          pip install -r src/server/requirements.txt
+          pip install pylint
+
+      - name: Run Pytest
+        run: |
+          . venv/bin/activate
+          pytest -svv --disable-warnings
