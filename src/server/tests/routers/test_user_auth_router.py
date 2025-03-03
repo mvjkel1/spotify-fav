@@ -3,9 +3,8 @@ import pytest
 from fastapi import HTTPException, status
 
 from ..conftest import db_session
+from ..fixtures.constants import SPOTIFY_HEADERS_EXAMPLE, USER_DATA_EXAMPLE
 from ..fixtures.user_auth_fixtures import (
-    SPOTIFY_HEADERS_EXAMPLE,
-    USER_DATA_EXAMPLE,
     mock_async_client_get,
     mock_generate_spotify_login_url,
     mock_get_spotify_headers,
@@ -23,7 +22,7 @@ def test_get_current_user_success(
     mock_async_client_get.return_value = httpx.Response(status_code=200, json=USER_DATA_EXAMPLE)
     response = test_client.get("/user-auth/me")
     assert response.json() == expected_output
-    mock_async_client_get.assert_called_once_with(
+    mock_async_client_get.assert_awaited_with(
         "https://api.spotify.com/v1/me",
         headers=SPOTIFY_HEADERS_EXAMPLE,
     )
