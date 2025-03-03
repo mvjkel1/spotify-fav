@@ -1,4 +1,5 @@
 from app.db.models import Track, User
+from app.db.schemas import UserSchema
 
 SPOTIFY_HEADERS_EXAMPLE = {
     "Authorization": "Bearer access_token",
@@ -78,3 +79,5 @@ TRACK_EXAMPLE_DB = Track(
 )
 
 USER_EXAMPLE_DB = User(id=1, spotify_uid=1, email="user@example.com", hashed_password="P!w!D")
+
+USER_SCHEMA_EXAMPLE = UserSchema(id=1, email="test@example.com", is_polling=False)
