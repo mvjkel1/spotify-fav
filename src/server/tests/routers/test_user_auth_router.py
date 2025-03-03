@@ -47,7 +47,7 @@ def test_get_current_user(
 def test_login(test_client, mock_generate_spotify_login_url):
     mock_generate_spotify_login_url.return_value = {"login_url": "https://fake-spotify-login.com"}
     response = test_client.get("/user-auth/login")
-    assert response.status_code == 200
+    assert response.status_code == status.HTTP_200_OK
     assert response.json() == {"login_url": "https://fake-spotify-login.com"}
     mock_generate_spotify_login_url.assert_called_once()
 
@@ -56,5 +56,5 @@ def test_callback(test_client, mock_handle_spotify_callback, db_session):
     fake_code = "fake_auth_code"
     mock_handle_spotify_callback.return_value = {"detail": "Spotify callback handled"}
     response = test_client.get(f"/user-auth/callback?code={fake_code}")
-    assert response.status_code == 200
+    assert response.status_code == status.HTTP_200_OK
     mock_handle_spotify_callback.assert_awaited_once_with(fake_code, db_session)
