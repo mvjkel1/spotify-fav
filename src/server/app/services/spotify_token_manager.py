@@ -4,15 +4,17 @@ import httpx
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.db.models import AccessToken
+from app.db.models import SpotifyAccessToken
 from app.services.utils import config
 
 
-class RefreshTokenError(Exception):
-    """Custom exception for refresh token-related errors."""
-
-
-def save_token(access_token: str, refresh_token: str, expires_in: int, db_session: Session):
+async def save_spotify_token(
+    access_token: str,
+    refresh_token: str,
+    expires_in: int,
+    user_id: int,
+    db_session: Session,
+):
     """
     Save or update the access and refresh tokens in the database.
 
@@ -20,29 +22,32 @@ def save_token(access_token: str, refresh_token: str, expires_in: int, db_sessio
         access_token (str): The new access token.
         refresh_token (str): The refresh token.
         expires_in (int): Time in seconds until the access token expires.
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
     """
     expires_at = time() + expires_in
-    token = db_session.query(AccessToken).first()
-    if token:
-        token.access_token = access_token
-        token.refresh_token = refresh_token
-        token.expires_at = expires_at
+    spotify_token = db_session.query(SpotifyAccessToken).filter_by(user_id=user_id).first()
+    if spotify_token:
+        spotify_token.access_token = access_token
+        spotify_token.refresh_token = refresh_token
+        spotify_token.expires_at = expires_at
     else:
-        token = AccessToken(
+        spotify_token = SpotifyAccessToken(
             access_token=access_token,
             refresh_token=refresh_token,
             expires_at=expires_at,
+            user_id=user_id,
         )
-        db_session.add(token)
+        db_session.add(spotify_token)
     db_session.commit()
 
 
-async def get_token(db_session: Session) -> dict[str, str]:
+async def get_spotify_token(user_id: int, db_session: Session) -> dict[str, str]:
     """
-    Retrieve the current access token if it is still valid, or refresh it.
+    Retrieve the current Spotify token if it is still valid, or refresh it.
 
     Args:
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
@@ -51,21 +56,22 @@ async def get_token(db_session: Session) -> dict[str, str]:
     Raises:
         HTTPException: If the token does not exist or refresh fails.
     """
-    token = get_token_from_db(db_session)
-    if not is_token_expired(token):
+    token = get_spotify_token_from_db(user_id, db_session)
+    if not token.is_expired():
         return {
             "access_token": token.access_token,
             "refresh_token": token.refresh_token,
             "expires_at": token.expires_at,
         }
-    return await handle_token_refresh(token.refresh_token, db_session)
+    return await handle_spotify_token_refresh(token.refresh_token, user_id, db_session)
 
 
-def get_token_from_db(db_session: Session) -> AccessToken:
+def get_spotify_token_from_db(user_id: int, db_session: Session) -> SpotifyAccessToken:
     """
-    Retrieve the current token from the database.
+    Retrieve the Spotify access token from the database for a current user.
 
     Args:
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
@@ -74,34 +80,24 @@ def get_token_from_db(db_session: Session) -> AccessToken:
     Raises:
         HTTPException: If the token is missing or invalid.
     """
-    token = db_session.query(AccessToken).first()
+    token = db_session.query(SpotifyAccessToken).filter_by(user_id=user_id).first()
     if not token or not token.access_token or not token.refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Access token does not exist in the database, login first to generate one.",
+            detail="Spotify access token does not exist in the database, login first to generate one.",
         )
     return token
 
 
-def is_token_expired(token: AccessToken) -> bool:
-    """
-    Check if the token is expired.
-
-    Args:
-        token (AccessToken): The token object to check.
-
-    Returns:
-        bool: True if the token is expired, False otherwise.
-    """
-    return token.expires_at < time()
-
-
-async def handle_token_refresh(refresh_token: str, db_session: Session) -> dict[str, str]:
+async def handle_spotify_token_refresh(
+    refresh_token: str, user_id: int, db_session: Session
+) -> dict[str, str]:
     """
     Handle the token refresh process.
 
     Args:
         refresh_token (str): The refresh token used to get a new access token.
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
@@ -111,26 +107,29 @@ async def handle_token_refresh(refresh_token: str, db_session: Session) -> dict[
         HTTPException: If the refresh process fails.
     """
     try:
-        return await refresh_access_token(refresh_token, db_session)
-    except RefreshTokenError as exc:
+        return await refresh_spotify_access_token(refresh_token, user_id, db_session)
+    except HTTPException as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token refresh failed: {str(exc)}"
         ) from exc
 
 
-async def refresh_access_token(refresh_token: str, db_session: Session) -> dict[str, str]:
+async def refresh_spotify_access_token(
+    refresh_token: str, user_id: int, db_session: Session
+) -> dict[str, str]:
     """
     Refresh the access token using the refresh token.
 
     Args:
         refresh_token (str): The refresh token used to get a new access token.
+        user_id (int): The ID of logged in user.
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         dict[str, str]: A dictionary containing the refreshed token data.
 
     Raises:
-        RefreshTokenError: If the refresh token is invalid or an unexpected error occurs.
+        HTTPException: If the refresh token is invalid.
     """
     async with httpx.AsyncClient() as client:
         try:
@@ -145,36 +144,35 @@ async def refresh_access_token(refresh_token: str, db_session: Session) -> dict[
             )
             response.raise_for_status()
             token_data = response.json()
-            new_token = {
+            new_spotify_token = {
                 "access_token": token_data["access_token"],
                 "refresh_token": refresh_token,
                 "expires_at": token_data.get("expires_in", 3600),
             }
-            save_token(*new_token.values(), db_session)
-            return new_token
+            await save_spotify_token(*new_spotify_token.values(), user_id, db_session)
+            return new_spotify_token
         except httpx.HTTPStatusError as exc:
-            raise RefreshTokenError(
+            raise HTTPException(
                 f"Failed to refresh token: {exc.response.status_code} - {exc.response.text}"
             ) from exc
         except httpx.TimeoutException as exc:
-            raise RefreshTokenError("Request timed out while refreshing token") from exc
-        except Exception as exc:
-            raise RefreshTokenError(f"Unexpected error: {str(exc)}") from exc
+            raise HTTPException("Request timed out while refreshing token") from exc
 
 
-async def get_spotify_headers(db_session: Session) -> dict[str, str]:
+async def get_spotify_headers(user_id: int, db_session: Session) -> dict[str, str]:
     """
     Generate the headers required for Spotify API requests using the current access token.
 
     Args:
+        user_id (int): The ID of logged in user.
         db_session (Session): SQLAlchemy session used to retrieve the access token.
 
     Returns:
         dict[str, str]: A dictionary containing the Authorization header with the access token
-        and Content-Type set to application/json.
+                        and Content-Type set to application/json.
     """
-    token = await get_token(db_session)
+    spotify_token = await get_spotify_token(user_id, db_session)
     return {
-        "Authorization": f"Bearer {token['access_token']}",
+        "Authorization": f"Bearer {spotify_token.get("access_token")}",
         "Content-Type": "application/json",
     }

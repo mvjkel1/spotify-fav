@@ -5,14 +5,14 @@ from fastapi import HTTPException, status
 from httpx import HTTPStatusError, Request, Response, TimeoutException
 
 from app.db.models import AccessToken
-from app.services.token_manager import (
+from server.app.services.spotify_token_manager import (
     RefreshTokenError,
     get_spotify_headers,
-    get_token_from_db,
-    handle_token_refresh,
-    is_token_expired,
-    refresh_access_token,
-    save_token,
+    get_spotify_token_from_db,
+    handle_spotify_token_refresh,
+    is_spotify_token_expired,
+    refresh_spotify_access_token,
+    save_spotify_token,
 )
 
 from ..conftest import db_session
