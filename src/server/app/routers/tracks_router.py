@@ -14,7 +14,7 @@ router = APIRouter(tags=["tracks"], prefix="/tracks")
 
 
 @router.get("/current-track")
-async def current_track(db_session: Session = Depends(get_db)) -> dict:
+async def current_track(db_session: Session = Depends(get_db)) -> dict[str, str]:
     """
     Retrieve the current track being played.
 
@@ -22,13 +22,15 @@ async def current_track(db_session: Session = Depends(get_db)) -> dict:
         db_session (Session): The database session to use.
 
     Returns:
-        dict: A dictionary containing details of the current track.
+        dict[str, str]: A dictionary containing details of the current track.
     """
     return await get_current_track(db_session)
 
 
 @router.post("/poll")
-async def poll(background_tasks: BackgroundTasks, db_session: Session = Depends(get_db)) -> dict:
+async def poll(
+    background_tasks: BackgroundTasks, db_session: Session = Depends(get_db)
+) -> dict[str, str]:
     """
     Start polling the playback state in the background.
 
@@ -37,7 +39,7 @@ async def poll(background_tasks: BackgroundTasks, db_session: Session = Depends(
         db_session (Session): The database session to use.
 
     Returns:
-        dict: A message indicating that polling has started.
+        dict[str, str]: A message indicating that polling has started.
     """
     # Workaround to don't add background tasks if there was an exception within poll_playback_state func call,
     # it should be improved in the future
@@ -48,7 +50,9 @@ async def poll(background_tasks: BackgroundTasks, db_session: Session = Depends(
 
 
 @router.get("/recently-played")
-async def get_recently_played(limit: int = 1, db_session: Session = Depends(get_db)) -> dict:
+async def get_recently_played(
+    limit: int = 1, db_session: Session = Depends(get_db)
+) -> dict[str, str]:
     """
     Retrieve recently played tracks.
 
@@ -57,13 +61,13 @@ async def get_recently_played(limit: int = 1, db_session: Session = Depends(get_
         limit (int): The number of recently played tracks to retrieve. Default is 1.
 
     Returns:
-        dict: A dictionary containing details of the recently played tracks.
+        dict[str, str]: A dictionary containing details of the recently played tracks.
     """
     return await get_recently_played_tracks(db_session, limit)
 
 
 @router.get("/playback-state")
-async def playback_state(db_session: Session = Depends(get_db)) -> dict:
+async def playback_state(db_session: Session = Depends(get_db)) -> dict[str, str]:
     """
     Retrieve the current playback state.
 
@@ -71,6 +75,6 @@ async def playback_state(db_session: Session = Depends(get_db)) -> dict:
         db_session (Session): The database session to use.
 
     Returns:
-        dict: A dictionary containing details of the current playback state.
+        dict[str, str]: A dictionary containing details of the current playback state.
     """
     return await get_playback_state(db_session)
