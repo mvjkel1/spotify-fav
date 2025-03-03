@@ -45,7 +45,7 @@ async def poll_playback_state(db_session: Session) -> None:
         await asyncio.sleep(1)
 
 
-async def get_recently_played_track(db_session: Session, limit: int = 1) -> dict:
+async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dict:
     """
     Retrieve the user's recently played tracks from Spotify.
 
