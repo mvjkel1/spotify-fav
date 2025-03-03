@@ -21,7 +21,7 @@ async def get_playlists(
     Retrieve user's playlists from Spotify.
 
     Args:
-        offset (int): The number of items to skip before starting to return results. Default is 0.
+        offset (int): The number of playlists to skip. Default is 0.
         limit (int): The maximum number of playlists to return. Must be at least 1. Default is 20.
         db_session (Session): The SQLAlchemy session to interact with the database.
 
@@ -37,7 +37,7 @@ async def get_all_spotify_playlists(db_session: Session = Depends(get_db)) -> di
     Retrieve all Spotify playlists.
 
     Args:
-        db_session (Session): Database session dependency.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         dict: A dictionary containing all playlists retrieved from Spotify.
@@ -54,7 +54,7 @@ async def get_playlist_by_spotify_id(
 
     Args:
         spotify_id (str): The Spotify ID of the playlist to retrieve.
-        db_session (Session): Database session dependency.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         dict: A dictionary containing the retrieved playlist information.

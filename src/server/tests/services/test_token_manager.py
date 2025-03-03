@@ -105,11 +105,11 @@ async def test_handle_token_refresh(
     mock_refresh_access_token.side_effect = side_effect
     if expected_exception:
         with pytest.raises(HTTPException) as excinfo:
-            await handle_token_refresh(db_session, "refresh_token")
+            await handle_token_refresh("refresh_token", db_session)
         assert excinfo.value.status_code == status.HTTP_401_UNAUTHORIZED
         assert excinfo.value.detail == "Token refresh failed: Refresh failed"
     else:
-        new_token = await handle_token_refresh(db_session, "refresh_token")
+        new_token = await handle_token_refresh("refresh_token", db_session)
         assert new_token["access_token"] == expected_access
         assert new_token["refresh_token"] == expected_refresh
 
@@ -154,9 +154,9 @@ async def test_refresh_access_token(
     mock_async_client_post.side_effect = side_effect
     if expected_exception:
         with pytest.raises(RefreshTokenError):
-            await refresh_access_token(db_session, "refresh_token")
+            await refresh_access_token("refresh_token", db_session)
     else:
-        new_token = await refresh_access_token(db_session, "refresh_token")
+        new_token = await refresh_access_token("refresh_token", db_session)
         assert new_token["access_token"] == expected_access
         assert new_token["refresh_token"] == "refresh_token"
 

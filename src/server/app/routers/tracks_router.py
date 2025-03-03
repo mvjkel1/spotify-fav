@@ -18,7 +18,7 @@ async def current_track(db_session: Session = Depends(get_db)) -> dict:
     Retrieve the current track being played.
 
     Args:
-        db_session (Session): The database session to use.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         dict: A dictionary containing details of the current track.
@@ -35,7 +35,10 @@ async def poll(
 
     Args:
         background_tasks (BackgroundTasks): The background task manager.
-        db_session (Session): The database session to use.
+        db_session (Session): The SQLAlchemy session to interact with the database.
+
+    Raises:
+        HTTPException: User is not authorized to start the polling process (missing token).
 
     Returns:
         dict[str, str]: A message indicating that polling has started.
@@ -56,8 +59,8 @@ async def get_recently_played(limit: int = 1, db_session: Session = Depends(get_
     Retrieve recently played tracks.
 
     Args:
-        db_session (Session): The database session to use.
         limit (int): The number of recently played tracks to retrieve. Default is 1.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         dict: A dictionary containing details of the recently played tracks.
@@ -71,7 +74,7 @@ async def playback_state(db_session: Session = Depends(get_db)) -> dict:
     Retrieve the current playback state.
 
     Args:
-        db_session (Session): The database session to use.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         dict: A dictionary containing details of the current playback state.
