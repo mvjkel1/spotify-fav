@@ -2,11 +2,12 @@ import base64
 import urllib.parse
 
 import httpx
-from app.token_manager import get_spotify_headers, get_token_from_db, save_token
-from app.utils import config, generate_random_string
 from fastapi import HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+
+from app.token_manager import get_spotify_headers, get_token_from_db, save_token
+from app.utils import config, generate_random_string
 
 
 async def get_current_user(db_session: Session) -> dict:
