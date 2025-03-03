@@ -61,7 +61,7 @@ async def get_current_user_id(db_session: Session) -> str:
         str: The current user's Spotify user ID.
     """
     current_user = await get_current_user(db_session=db_session)
-    return current_user["id"]
+    return current_user.get("id", "")
 
 
 @router.get("/login")
