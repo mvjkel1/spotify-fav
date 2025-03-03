@@ -2,7 +2,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from .constants import SPOTIFY_HEADERS_EXAMPLE, TRACK_DATA_EXAMPLE, ENV_CONFIG_EXAMPLE
+from .constants import (
+    SPOTIFY_HEADERS_EXAMPLE,
+    TRACK_DATA_EXAMPLE,
+    ENV_CONFIG_EXAMPLE,
+    TRACK_DATA_DICT_EXAMPLE,
+)
 
 
 @pytest.fixture(scope="function")
@@ -44,9 +49,19 @@ def mock_process_playing_track():
         yield mock
 
 
-# @pytest.fixture(scope="module")
-# def mock_check_track_progress():
-#     with patch(
-#         "app.services.tracks_service.check_track_progress", return_value=(True, False)
-#     ) as mock:
-#         yield mock
+@pytest.fixture(scope="function")
+def mock_get_current_track():
+    with patch("app.routers.tracks_router.get_current_track") as mock:
+        yield mock
+
+
+@pytest.fixture(scope="function")
+def mock_is_user_authorized():
+    with patch("app.routers.tracks_router.is_user_authorized") as mock:
+        yield mock
+
+
+@pytest.fixture(scope="function")
+def mock_poll_playback_state():
+    with patch("app.routers.tracks_router.poll_playback_state") as mock:
+        yield mock
