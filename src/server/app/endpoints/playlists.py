@@ -1,11 +1,11 @@
 import httpx
-from app.db.database import get_db
 from dotenv import dotenv_values, find_dotenv
-from app.endpoints.user_auth import get_current_user_id
 from fastapi import APIRouter, Depends, HTTPException
-from app.db.models import Playlist, Track
 from sqlalchemy.orm import Session
-from app.token_manager import get_token
+
+from app.db.database import get_db
+from app.db.models import Playlist, Track
+from app.endpoints.user_auth import get_current_user_id
 from app.utils import get_spotify_headers
 
 env_path = find_dotenv()
@@ -37,11 +37,15 @@ async def get_my_playlists(db_session: Session = Depends(get_db)) -> dict:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+            raise HTTPException(
+                status_code=exc.response.status_code, detail=exc.response.text
+            ) from exc
 
 
 @router.post("/playlists")
-async def create_playlist(playlist_name: str, db_session: Session = Depends(get_db)) -> dict:
+async def create_playlist(
+    playlist_name: str, db_session: Session = Depends(get_db)
+) -> dict:
     """
     Create a new playlist both locally in the database and remotely on Spotify,
     and populate it with tracks.
@@ -58,22 +62,21 @@ async def create_playlist(playlist_name: str, db_session: Session = Depends(get_
         an HTTPException is raised with the status code and error details from the response.
     """
     try:
-        token = get_token(db_session)
-        user_id = await get_current_user_id()
+        user_id = await get_current_user_id(db_session)
         tracks_db = get_tracks_for_playlist(db_session)
         playlist = create_playlist_in_db(playlist_name, tracks_db, db_session)
         spotify_headers = await get_spotify_headers(db_session)
         playlist_id = await create_playlist_on_spotify(
-            user_id, playlist, token["access_token"], spotify_headers
+            user_id, playlist, spotify_headers
         )
         await add_tracks_to_playlist(
             playlist_id, [track.spotify_id for track in tracks_db], spotify_headers
         )
         return {"message": "Playlist created successfully."}
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(
+            status_code=exc.response.status_code, detail=exc.response.text
+        ) from exc
 
 
 def get_tracks_for_playlist(db_session: Session) -> list:
@@ -89,7 +92,9 @@ def get_tracks_for_playlist(db_session: Session) -> list:
     return db_session.query(Track).filter(Track.listened_count > 0).all()
 
 
-def create_playlist_in_db(playlist_name: str, tracks: list, db_session: Session) -> Playlist:
+def create_playlist_in_db(
+    playlist_name: str, tracks: list, db_session: Session
+) -> Playlist:
     """
     Create a new playlist entry in the local database and associate it with the given tracks.
 
@@ -104,18 +109,19 @@ def create_playlist_in_db(playlist_name: str, tracks: list, db_session: Session)
     playlist = Playlist(name=playlist_name, tracks=tracks)
     db_session.add(playlist)
     db_session.commit()
-    db_session.close()
     return playlist
 
 
-async def create_playlist_on_spotify(user_id: str, playlist: Playlist, spotify_headers) -> str:
+async def create_playlist_on_spotify(
+    user_id: str, playlist: Playlist, spotify_headers: dict[str, str]
+) -> str:
     """
     Create a new playlist on Spotify for the given user and return its Spotify ID.
 
     Args:
         user_id (str): The Spotify user ID.
         playlist (Playlist): The playlist object containing the name and other details.
-        spotify_headers: Headers for the Spotify API request.
+        spotify_headers dict[str, str]: Headers for the Spotify API request.
 
     Returns:
         str: The Spotify ID of the newly created playlist.
@@ -132,7 +138,9 @@ async def create_playlist_on_spotify(user_id: str, playlist: Playlist, spotify_h
         return response.json()["id"]
 
 
-async def add_tracks_to_playlist(playlist_id: str, track_ids: list[str], spotify_headers) -> None:
+async def add_tracks_to_playlist(
+    playlist_id: str, track_ids: list[str], spotify_headers
+) -> None:
     """
     Add tracks to a Spotify playlist.
 
@@ -153,6 +161,8 @@ async def add_tracks_to_playlist(playlist_id: str, track_ids: list[str], spotify
             response = await client.post(url, headers=spotify_headers, json=payload)
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+            raise HTTPException(
+                status_code=exc.response.status_code, detail=exc.response.text
+            ) from exc
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=str(exc))
+            raise HTTPException(status_code=500, detail=str(exc)) from exc

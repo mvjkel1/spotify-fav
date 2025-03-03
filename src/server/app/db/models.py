@@ -1,6 +1,7 @@
-from app.db.database import Base
 from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
+
+from app.db.database import Base
 
 playlist_track_association_table = Table(
     "playlist_track",
