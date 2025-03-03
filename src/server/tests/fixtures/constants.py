@@ -1,4 +1,4 @@
-from app.db.models import Track
+from app.db.models import Track, User
 
 SPOTIFY_HEADERS_EXAMPLE = {
     "Authorization": "Bearer access_token",
@@ -16,6 +16,10 @@ ENV_CONFIG_EXAMPLE = {
     "SPOTIFY_AUTH_URL": "SPOTIFY_AUTH_URL",
     "REDIS_URL": "REDIS_URL",
     "REDIS_TOKEN": "REDIS_TOKEN",
+    "SECRET_KEY": "!SECRET_KEY!",
+    "REFRESH_TOKEN_EXPIRE_DAYS": 4,
+    "ACCESS_TOKEN_EXPIRE_MINUTES": 20,
+    "ALGORITHM": "HS256",
 }
 
 USER_DATA_EXAMPLE = {
@@ -72,3 +76,5 @@ TRACK_EXAMPLE_DB = Track(
     title="Test Track",
     spotify_id="test_id",
 )
+
+USER_EXAMPLE_DB = User(id=1, spotify_uid=1, email="user@example.com", hashed_password="P!w!D")
