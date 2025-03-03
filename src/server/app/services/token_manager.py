@@ -157,7 +157,7 @@ async def refresh_access_token(db_session: Session, refresh_token: str) -> dict[
             return new_token
         except httpx.HTTPStatusError as exc:
             raise RefreshTokenError(
-                f"Failed to refresh token: {exc.response.status_code}, {exc.response.text}"
+                f"Failed to refresh token: {exc.response.status_code} - {exc.response.text}"
             ) from exc
         except httpx.TimeoutException as exc:
             raise RefreshTokenError("Request timed out while refreshing token") from exc
