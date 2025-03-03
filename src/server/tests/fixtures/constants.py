@@ -1,3 +1,5 @@
+from app.db.models import Track
+
 SPOTIFY_HEADERS_EXAMPLE = {
     "Authorization": "Bearer access_token",
     "Content-Type": "application/json",
@@ -35,19 +37,38 @@ ACCESS_TOKEN_EXAMPLE = {
 }
 
 TRACK_DATA_EXAMPLE = (10000, 12000, "Test track", "test_track_id")
+
 TRACK_DATA_DICT_EXAMPLE = {
     "track_id": "123",
     "name": "Test Track",
     "artist": "Test Artist",
     "album": "Test Album",
 }
+
 GET_CURRENT_USER_URL = f"{ENV_CONFIG_EXAMPLE["SPOTIFY_API_URL"]}/me"
+
 GET_CURRENT_TRACK_URL = f"{ENV_CONFIG_EXAMPLE["SPOTIFY_API_URL"]}/me/player/currently-playing"
+
 GET_RECENTLY_PLAYED_TRACKS_URL = (
     f"{ENV_CONFIG_EXAMPLE["SPOTIFY_API_URL"]}/me/player/recently-played?limit=1"
 )
+
 GET_PLAYBACK_STATE_URL = f"{ENV_CONFIG_EXAMPLE["SPOTIFY_API_URL"]}/me/player"
-GET_MY_PLAYLISTS_URL = (
+
+GET_MY_PLAYLISTS_URL_EXAMPLE = (
     f"{ENV_CONFIG_EXAMPLE["SPOTIFY_API_URL"]}/users/1/playlists?offset=0&limit=10"
 )
-CREATE_PLAYLIST_SERVICE_URL = f"{ENV_CONFIG_EXAMPLE["SPOTIFY_API_URL"]}/playlists/10/tracks"
+
+CREATE_PLAYLIST_SERVICE_URL_EXAMPLE = f"{ENV_CONFIG_EXAMPLE["SPOTIFY_API_URL"]}/playlists/10/tracks"
+
+USER_ID_EXAMPLE = "123"
+
+SPOTIFY_USER_ID_EXAMPLE = "114477"
+
+EXAMPLE_TRACK_ID = "25"
+
+TRACK_EXAMPLE_DB = Track(
+    id=EXAMPLE_TRACK_ID,
+    title="Test Track",
+    spotify_id="test_id",
+)
