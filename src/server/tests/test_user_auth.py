@@ -1,16 +1,12 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from fastapi.responses import RedirectResponse
 import httpx
 import pytest
 import status
-from app.endpoints.user_auth import (
-    callback,
-    get_current_user,
-    get_current_user_id,
-    login,
-)
 from fastapi import HTTPException, Request
+
+from app.endpoints.user_auth import (callback, get_current_user,
+                                     get_current_user_id, login)
 
 from .conftest import db_session, test_client
 
@@ -146,9 +142,9 @@ async def test_callback_missing_code():
         }
     )
     with pytest.raises(HTTPException) as exc:
-        response = await callback(request)
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.json() == {"detail": "Authorization code not found in request"}
+        await callback(request)
+    assert exc.value.status_code == status.HTTP_400_BAD_REQUEST
+    assert exc.value.detail == "Authorization code not found in request"
 
 
 @pytest.mark.asyncio
@@ -176,13 +172,7 @@ async def test_callback_success(mock_mock_async_client, mock_save_token, db_sess
 
 
 @pytest.mark.asyncio
-@patch(
-    "app.endpoints.user_auth.httpx.AsyncClient.post",
-    return_value=httpx.Response(
-        200, json={"access_token": "123", "XXX": "YYY", "ZZZ": 0}
-    ),
-)
-async def test_callback_failure(mock_mock_async_client, db_session):
+async def test_callback_failure(db_session):
     query_string = "code=code123"
     request = Request(
         {
@@ -194,6 +184,6 @@ async def test_callback_failure(mock_mock_async_client, db_session):
         }
     )
     with pytest.raises(HTTPException) as exc:
-        response = await callback(request, db_session)
+        await callback(request)
     assert exc.value.detail == "Failed to retrieve tokens from Spotify API"
     assert exc.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
