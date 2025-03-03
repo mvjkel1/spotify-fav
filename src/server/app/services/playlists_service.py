@@ -127,7 +127,7 @@ async def process_playlist_creation(playlist_name: str, db_session: Session) -> 
         if not tracks_db:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="No new tracks to be added to a playlist.",
+                detail="The playlist cannot be created since there are no new tracks listened recently.",
             )
         playlist_id = await create_playlist_on_spotify(user_id, playlist_name, spotify_headers)
         create_playlist_in_db(playlist_name, playlist_id, tracks_db, db_session)
