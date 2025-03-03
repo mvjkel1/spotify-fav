@@ -1,6 +1,7 @@
 import asyncio
 
 import httpx
+import status
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -32,7 +33,7 @@ async def current_track(db_session: Session = Depends(get_db)) -> dict:
     headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
-        if response.status_code == 200:
+        if response.status_code == status.HTTP_200_OK:
             return response.json()
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
@@ -56,7 +57,7 @@ async def playback_state(db_session: Session = Depends(get_db)) -> dict:
     headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
-        if response.status_code == 200:
+        if response.status_code == status.HTTP_200_OK:
             return response.json()
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
@@ -82,7 +83,9 @@ async def poll_playback_state(access_token: str, db_session: Session) -> None:
         await asyncio.sleep(1)
 
 
-async def handle_playing_track(state: dict, db_session: Session, access_token: str) -> None:
+async def handle_playing_track(
+    state: dict, db_session: Session, access_token: str
+) -> None:
     """
     Handle the logic for a track that is currently playing.
 
@@ -106,7 +109,9 @@ async def handle_playing_track(state: dict, db_session: Session, access_token: s
             await create_track_entry(track_title, track_id, db_session)
 
 
-async def create_track_entry(track_title: str, track_id: int, db_session: Session) -> None:
+async def create_track_entry(
+    track_title: str, track_id: int, db_session: Session
+) -> None:
     """
     Create a new track entry in the database.
 
@@ -120,7 +125,9 @@ async def create_track_entry(track_title: str, track_id: int, db_session: Sessio
     db_session.commit()
 
 
-async def update_track_listened_count(track: Track, db_session: Session, access_token: str) -> None:
+async def update_track_listened_count(
+    track: Track, db_session: Session, access_token: str
+) -> None:
     """
     Update the listened count for a track in the database.
 
@@ -170,7 +177,9 @@ async def poll_tracks(
 
 
 @router.get("/recently-played-tracks")
-async def get_recently_played(db_session: Session = Depends(get_db), limit: int = 1) -> dict:
+async def get_recently_played(
+    db_session: Session = Depends(get_db), limit: int = 1
+) -> dict:
     """
     Fetch the recently played tracks from the user's Spotify account.
 
@@ -189,6 +198,6 @@ async def get_recently_played(db_session: Session = Depends(get_db), limit: int 
     headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
-        if response.status_code == 200:
+        if response.status_code == status.HTTP_200_OK:
             return response.json()
         raise HTTPException(status_code=response.status_code, detail=response.text)
