@@ -2,9 +2,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from jose import jwt
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio.session import AsyncSession
 
-from app.db.database import get_db
+from app.db.database import async_get_db
 from app.services.spotify_auth_service import (
     generate_spotify_login_url,
     get_spotify_user,
@@ -20,14 +20,14 @@ router = APIRouter(tags=["spotify-auth"], prefix="/spotify-auth")
 @router.get("/me")
 async def get_me(
     current_user: Annotated[UserSchema, Depends(get_current_active_user)],
-    db_session: Session = Depends(get_db),
+    db_session: AsyncSession = Depends(async_get_db),
 ) -> dict:
     """
     Retrieve the current Spotify user's information from the database.
 
     Args:
         current_user (UserSchema): The current authenticated user, provided by the dependency get_current_active_user.
-        db_session (Session): The SQLAlchemy session used to query the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         dict: A dictionary containing the current user's information.
@@ -44,8 +44,8 @@ async def login_spotify(
     Generate and return the Spotify OAuth2 login URL.
 
     Args:
-    current_user (UserSchema): The currently authenticated user, provided by the dependency get_current_active_user.
-    jwt_token (str): The JWT token used to authenticate the request and obtain Spotify access.
+        current_user (UserSchema): The currently authenticated user, provided by the dependency get_current_active_user.
+        jwt_token (str): The JWT token used to authenticate the request and obtain Spotify access.
 
     Returns:
         dict[str, str]: A dictionary containing the Spotify login URL.
@@ -54,13 +54,15 @@ async def login_spotify(
 
 
 @router.get("/callback")
-async def callback(request: Request, db_session: Session = Depends(get_db)) -> RedirectResponse:
+async def callback(
+    request: Request, db_session: AsyncSession = Depends(async_get_db)
+) -> RedirectResponse:
     """
     Handle the Spotify OAuth2 callback by exchanging the authorization code for access tokens.
 
     Args:
         request (Request): The FastAPI request object to extract the authorization code.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         RedirectResponse: Redirects the user after handling the callback.

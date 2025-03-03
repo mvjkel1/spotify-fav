@@ -3,13 +3,14 @@ import hashlib
 from itertools import chain
 
 import httpx
+from sqlalchemy import delete, select
 from app.db.models import Playlist, Track
 from app.services.spotify_token_manager import get_spotify_headers
 from app.services.tracks_service import fetch_listened_tracks
 from app.services.spotify_auth_service import get_current_spotify_user_id
 from app.services.utils import config
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio.session import AsyncSession
 from upstash_redis.asyncio import Redis
 
 from app.services.user_auth_service import get_current_user_db
@@ -18,7 +19,7 @@ MAX_PLAYLIST_TRACKS = 100
 
 
 async def get_playlists_from_spotify(
-    offset: int, limit: int, user_id: int, db_session: Session
+    offset: int, limit: int, user_id: int, db_session: AsyncSession
 ) -> dict:
     """
     Retrieve the current user's playlists from Spotify.
@@ -27,7 +28,7 @@ async def get_playlists_from_spotify(
         offset (int): The index of the first playlist to return.
         limit (int): The number of playlists to return.
         user_id (int): The ID of logged in user.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         dict: A JSON response from Spotify containing the user's playlists.
@@ -39,7 +40,7 @@ async def get_playlists_from_spotify(
     spotify_headers = await get_spotify_headers(user_id, db_session)
     async with httpx.AsyncClient() as client:
         try:
-            user = get_current_user_db(user_id, db_session)
+            user = await get_current_user_db(user_id, db_session)
             url = f"{config['SPOTIFY_API_URL']}/users/{user.spotify_uid}/playlists?offset={offset}&limit={limit}"
             response = await client.get(url, headers=spotify_headers)
             response.raise_for_status()
@@ -55,7 +56,7 @@ async def get_playlists_from_spotify(
 
 
 async def retrieve_playlist_from_spotify_by_spotify_id(
-    spotify_id: str, user_id: int, db_session: Session
+    spotify_id: str, user_id: int, db_session: AsyncSession
 ) -> dict:
     """
     Retrieve the tracks of a Spotify playlist using its Spotify ID.
@@ -63,7 +64,7 @@ async def retrieve_playlist_from_spotify_by_spotify_id(
     Args:
         spotify_id (str): The Spotify ID of the playlist to retrieve.
         user_id (int): The ID of logged in user.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         dict: A dictionary containing tracks from the specified playlist.
@@ -75,15 +76,17 @@ async def retrieve_playlist_from_spotify_by_spotify_id(
         return response.json()
 
 
-async def sync_playlists(user_id: int, db_session: Session) -> None:
+async def sync_playlists(user_id: int, db_session: AsyncSession) -> None:
     """
     Synchronize spotify-fav playlists between database and the Spotify.
 
     Args:
         user_id (int): The ID of logged in user.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
     """
-    db_playlists_ids = {playlist.spotify_id for playlist in db_session.query(Playlist).all()}
+    result = await db_session.execute(select(Playlist))
+    db_playlists = result.scalars().all()
+    db_playlists_ids = {playlist.spotify_id for playlist in db_playlists}
     spotify_playlists = await get_all_playlists(user_id, db_session)
     spotify_playlists_ids = {
         playlist["id"]
@@ -91,17 +94,20 @@ async def sync_playlists(user_id: int, db_session: Session) -> None:
         if "spotify_fav" in playlist["name"]
     }
     playlists_to_remove_ids = db_playlists_ids - spotify_playlists_ids
-    db_session.query(Playlist).filter(Playlist.spotify_id.in_(playlists_to_remove_ids)).delete()
-    db_session.commit()
+    if playlists_to_remove_ids:
+        await db_session.execute(
+            delete(Playlist).where(Playlist.spotify_id.in_(playlists_to_remove_ids))
+        )
+        await db_session.commit()
 
 
-async def get_all_playlists(user_id: int, db_session: Session) -> dict:
+async def get_all_playlists(user_id: int, db_session: AsyncSession) -> dict:
     """
     Retrieve all playlists for the current user from Spotify by fetching in batches.
 
     Args:
         user_id (int): The ID of logged in user.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         dict: A dictionary containing the list of all user's playlists from Spotify.
@@ -125,14 +131,14 @@ async def get_all_playlists(user_id: int, db_session: Session) -> dict:
         ) from exc
 
 
-async def filter_new_tracks(playlists: dict, user_id: int, db_session: Session) -> list[Track]:
+async def filter_new_tracks(playlists: dict, user_id: int, db_session: AsyncSession) -> list[Track]:
     """
     Filter out tracks that are already included in existing playlists.
 
     Args:
         playlists (dict): A dictionary containing existing playlists and their tracks.
         user_id (int): The ID of logged in user.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         list: A list of tracks that are new and not included in any existing playlists.
@@ -148,7 +154,7 @@ async def create_playlist(
     tracks_db: list,
     spotify_user_id: str,
     user_id: int,
-    db_session: Session,
+    db_session: AsyncSession,
     spotify_headers: dict,
 ) -> None:
     """
@@ -159,18 +165,18 @@ async def create_playlist(
         tracks_db (list): A list of track objects to be added to the playlist.
         spotify_user_id (str): The Spotify user ID.
         user_id (int): The ID of logged in user.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
         spotify_headers (dict): The headers for Spotify API requests.
     """
     playlist_id = await create_playlist_on_spotify(spotify_user_id, playlist_name, spotify_headers)
-    create_playlist_in_db(playlist_name, playlist_id, tracks_db, user_id, db_session)
+    await create_playlist_in_db(playlist_name, playlist_id, tracks_db, user_id, db_session)
     await add_tracks_to_playlist(
         playlist_id, [track.spotify_id for track in tracks_db], spotify_headers
     )
 
 
 async def process_playlist_creation(
-    playlist_name: str, user_id: int, db_session: Session
+    playlist_name: str, user_id: int, db_session: AsyncSession
 ) -> dict[str, str]:
     """
     Create a new playlist in the local database and on Spotify.
@@ -179,7 +185,7 @@ async def process_playlist_creation(
     Args:
         playlist_name (str): The name of the playlist to be created.
         user_id (int): The ID of logged in user.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         dict[str, str]: A dictionary containing a success message.
@@ -206,9 +212,9 @@ async def process_playlist_creation(
             db_session,
             spotify_headers,
         )
-        return {"message": f"The '{playlist_name}' playlist was created successfully."}
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text) from exc
+    return {"message": f"The '{playlist_name}' playlist was created successfully."}
 
 
 async def create_playlist_on_spotify(
@@ -238,8 +244,8 @@ async def create_playlist_on_spotify(
         return response.json()["id"]
 
 
-def create_playlist_in_db(
-    playlist_name: str, playlist_id: str, tracks: list, user_id: int, db_session: Session
+async def create_playlist_in_db(
+    playlist_name: str, playlist_id: str, tracks: list, user_id: int, db_session: AsyncSession
 ) -> Playlist:
     """
     Create a new playlist entry in the local database and associate it with the given tracks.
@@ -249,14 +255,14 @@ def create_playlist_in_db(
         playlist_id (str): The ID of the playlist based on Spotify's playlist creation.
         tracks (list): A list of tracks to associate with the playlist.
         user_id (int): The ID of logged in user.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         Playlist: The created playlist object.
     """
     playlist = Playlist(name=playlist_name, spotify_id=playlist_id, tracks=tracks, user_id=user_id)
     db_session.add(playlist)
-    db_session.commit()
+    await db_session.commit()
     return playlist
 
 
@@ -284,7 +290,7 @@ async def add_tracks_to_playlist(
 
 
 async def cache_playlist_tracks(
-    playlists: list[dict], user_id: int, db_session: Session
+    playlists: list[dict], user_id: int, db_session: AsyncSession
 ) -> dict[str, set]:
     """
     Fetch all tracks for each playlist and store them in a cache (Redis).
@@ -292,7 +298,7 @@ async def cache_playlist_tracks(
     Args:
         playlists (list[dict]): List of dictonaries containing the playlists details.
         user_id (int): The ID of logged in user.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         dict[str, set]: A dictionary with playlist IDs as keys and sets of track titles as values.

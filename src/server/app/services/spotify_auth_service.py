@@ -5,7 +5,7 @@ import httpx
 from fastapi import HTTPException, status
 from fastapi.responses import RedirectResponse
 import jwt
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from app.services.spotify_token_manager import (
     get_spotify_headers,
@@ -16,13 +16,13 @@ from app.services.utils import config
 from app.services.user_auth_service import get_current_user
 
 
-async def get_spotify_user(user_id: int, db_session: Session) -> dict:
+async def get_spotify_user(user_id: int, db_session: AsyncSession) -> dict:
     """
     Retrieve the current user's Spotify profile information.
 
     Args:
         user_id (int): The ID of logged in user.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         dict: A dictionary containing the current user's profile information.
@@ -35,13 +35,13 @@ async def get_spotify_user(user_id: int, db_session: Session) -> dict:
         return response.json()
 
 
-async def get_current_spotify_user_id(user_id: int, db_session: Session) -> str:
+async def get_current_spotify_user_id(user_id: int, db_session: AsyncSession) -> str:
     """
     Retrieve the current user's Spotify user ID.
 
     Args:
         user_id (int): The ID of logged in user.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         str: The current user's Spotify user ID.
@@ -85,7 +85,7 @@ def generate_spotify_login_url(jwt_token: str) -> dict[str, str]:
 
 
 async def handle_spotify_callback(
-    code: str, jwt_token: str, db_session: Session
+    code: str, jwt_token: str, db_session: AsyncSession
 ) -> RedirectResponse:
     """
     Handle the callback from Spotify after user authorization.
@@ -93,7 +93,7 @@ async def handle_spotify_callback(
     Args:
         code (str): The authorization code returned from Spotify.
         jwt_token (str): The JWT token used to authenticate the Spotify API request.
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         RedirectResponse: Redirect to a specified URL after successful token retrieval.
@@ -120,7 +120,7 @@ async def handle_spotify_callback(
     await save_spotify_token(access_token, refresh_token, expires_in, current_user.id, db_session)
     spotify_user = await get_spotify_user(current_user.id, db_session)
     current_user.spotify_uid = spotify_user.get("id")
-    db_session.commit()
+    await db_session.commit()
     return RedirectResponse(url=config["CALLBACK_REDIRECT_URL"])
 
 
@@ -188,12 +188,12 @@ async def exchange_token_with_spotify(form_data: dict, headers: dict) -> dict[st
         ) from exc
 
 
-def is_spotify_user_authorized(db_session: Session) -> bool:
+def is_spotify_user_authorized(db_session: AsyncSession) -> bool:
     """
     Check if the user is authorized based on the presence of a token in the database.
 
     Args:
-        db_session (Session): The SQLAlchemy session to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
         bool: True if user is authorized, False otherwise.
