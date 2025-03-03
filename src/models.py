@@ -1,12 +1,13 @@
 from pydantic import BaseModel
 
+from database import Base
+
 
 class TokenRequest(BaseModel):
     client_id: str
     client_secret: str
 
 
-class PlaybackStateResponse(BaseModel):
-    is_playing: bool
-    progress_ms: int
-    item: dict
+# TODO
+class Track(Base):
+    pass
