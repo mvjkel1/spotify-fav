@@ -1,33 +1,40 @@
 import base64
 import urllib.parse
 
-from fastapi.responses import RedirectResponse
 import httpx
 from dotenv import dotenv_values, find_dotenv
-from fastapi import APIRouter, HTTPException, Request
-
-from utils import generate_random_string, get_spotify_headers
-from token_manager import token_manager
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
+from app.db.database import get_db
+from app.token_manager import save_token
+from app.utils import generate_random_string, get_spotify_headers
 
 env_path = find_dotenv()
 config = dotenv_values(env_path)
-
 router = APIRouter(tags=["user_auth"])
 
 
 @router.get("/me")
-async def get_current_user() -> dict:
+async def get_current_user(db_session: Session = Depends(get_db)) -> dict:
     """
-    Fetches the current user's profile from Spotify API.
+    Retrieve the current user's Spotify profile information.
+
+    This endpoint uses the Spotify API to fetch the current user's profile data.
+    It requires a valid access token to authenticate the request.
+
+    Args:
+        db_session (Session): The database session dependency, used for obtaining headers.
 
     Returns:
-        dict: Spotify user object as a dictionary.
+        dict: A dictionary containing the current user's profile information.
 
     Raises:
-        HTTPException: If the Spotify API response is unsuccessful.
+        HTTPException: If the request to the Spotify API fails, an HTTPException is raised
+        with the appropriate status code and error details.
     """
     url = f"{config['SPOTIFY_API_URL']}/me"
-    headers = get_spotify_headers()
+    headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
         if response.status_code == 200:
@@ -38,18 +45,21 @@ async def get_current_user() -> dict:
         )
 
 
-async def get_current_user_id() -> str:
+async def get_current_user_id(db_session: Session = Depends(get_db)) -> str:
     """
-    Fetches the Spotify user ID of the current user.
+    Retrieve the current user's Spotify user ID.
+
+    This function uses the `get_current_user` function to fetch the current user's profile
+    data and extracts the user ID from the response.
 
     Args:
-        access_token (str): Spotify user access token.
+        db_session (Session): The database session dependency.
 
     Returns:
-        dict: Spotify user ID.
+        str: The current user's Spotify user ID.
     """
-    user = await get_current_user()
-    return user.get("id", "")
+    current_user = await get_current_user(db_session=db_session)
+    return current_user["id"]
 
 
 @router.get("/login")
@@ -75,11 +85,27 @@ async def login() -> dict:
 
 
 @router.get("/callback")
-async def callback(request: Request):
+async def callback(request: Request, db_session: Session = Depends(get_db)):
+    """
+    Handle the Spotify OAuth2 callback.
+
+    This endpoint exchanges the authorization code received from Spotify for access and
+    refresh tokens, then saves them. It also handles errors that may occur during this process.
+
+    Args:
+        request (Request): The request object containing the authorization code.
+        db_session (Session): The database session dependency.
+
+    Returns:
+        RedirectResponse: Redirects the user to the documentation page upon successful token exchange.
+
+    Raises:
+        HTTPException: If any error occurs during the token exchange process or if the authorization
+        code is missing, an HTTPException is raised with the appropriate status code and error details.
+    """
     code = request.query_params.get("code")
     if not code:
         raise HTTPException(status_code=400, detail="Authorization code not found in request")
-
     try:
         auth_header = base64.b64encode(
             f"{config['CLIENT_ID']}:{config['CLIENT_SECRET']}".encode()
@@ -94,24 +120,19 @@ async def callback(request: Request):
             "redirect_uri": config["REDIRECT_URI"],
             "grant_type": "authorization_code",
         }
-
         async with httpx.AsyncClient() as client:
             response = await client.post(token_url, data=form_data, headers=headers)
-
         response.raise_for_status()
         response_json = response.json()
-
         access_token = response_json["access_token"]
         refresh_token = response_json["refresh_token"]
-
+        expires_in = response_json["expires_in"]
         if not access_token or not refresh_token:
             raise HTTPException(
                 status_code=500, detail="Failed to retrieve tokens from Spotify API"
             )
-
-        token_manager.set_tokens(access_token, refresh_token)
-        return RedirectResponse(url="http://127.0.0.1:8000/docs")
-
+        save_token(access_token, refresh_token, expires_in, db_session)
+        return RedirectResponse(url=config["CALLBACK_REDIRECT_URL"])
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=exc.response.status_code, detail=f"HTTP error occurred: {exc}"
