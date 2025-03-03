@@ -243,7 +243,7 @@ async def process_playing_track(
     if track_db and ten_seconds_left:
         await update_track_listened_count(track_db, user_id, db_session)
     elif not track_db and ten_seconds_passed:
-        create_track_entry(track_title, track_id, user_id, db_session)
+        await create_track_entry(track_title, track_id, user_id, db_session)
 
 
 async def create_track_entry(
