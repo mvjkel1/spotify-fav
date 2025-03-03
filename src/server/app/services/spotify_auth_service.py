@@ -4,7 +4,7 @@ import urllib.parse
 import httpx
 from fastapi import HTTPException, status
 from fastapi.responses import RedirectResponse
-import jwt
+from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from app.services.spotify_token_manager import (
