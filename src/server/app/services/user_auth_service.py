@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.token_manager import get_spotify_headers, get_token_from_db, save_token
+from app.services.token_manager import get_spotify_headers, get_token_from_db, save_token
 from app.services.utils import config, generate_random_string
 
 
