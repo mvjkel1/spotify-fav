@@ -49,7 +49,7 @@ def mock_current_user():
     return USER_SCHEMA_EXAMPLE
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture
 async def test_client(db_session, mock_current_user):
     """Create a test client that uses the override_get_db fixture to return a session."""
 
