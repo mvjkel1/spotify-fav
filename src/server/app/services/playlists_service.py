@@ -1,12 +1,16 @@
-import httpx
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session, joinedload
+import asyncio
+from itertools import chain
+from time import perf_counter
 
-from app.db.models import Playlist, Track
+import httpx
+from app.db.models import Playlist
 from app.db.schemas import PlaylistResponse
-from app.services.user_auth_service import get_current_user_id
 from app.services.token_manager import get_spotify_headers
-from app.services.utils import config
+from app.services.tracks_service import fetch_listened_tracks
+from app.services.user_auth_service import get_current_user_id
+from app.services.utils import config, time_it_async
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
 
 
 async def get_playlists_from_spotify(offset: int, limit: int, db_session: Session) -> dict:
@@ -43,30 +47,14 @@ async def get_playlists_from_spotify(offset: int, limit: int, db_session: Sessio
         return response.json()
 
 
-def retrieve_playlist_by_spotify_id(
+async def retrieve_playlist_from_spotify_by_spotify_id(
     spotify_id: str, db_session: Session
-) -> dict[str, PlaylistResponse]:
-    """
-    Query the database for a playlist by its Spotify ID.
-
-    Args:
-        spotify_id (str): The Spotify ID of the playlist to retrieve.
-        db_session (Session): SQLAlchemy session used for database operations.
-
-    Returns:
-        dict[str, PlaylistResponse]: A dictionary containing the playlist data,
-            validated and formatted as a PlaylistResponse.
-
-    Raises:
-        HTTPException: If no playlist with the given Spotify ID is found.
-    """
-    playlist_db = db_session.query(Playlist).filter(Playlist.spotify_id == spotify_id).first()
-    if not playlist_db:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No playlist with given '{spotify_id}' spotify ID was found.",
-        )
-    return {"playlist": PlaylistResponse.model_validate(playlist_db)}
+) -> dict:
+    url = f"{config['SPOTIFY_API_URL']}/playlists/{spotify_id}"
+    spotify_headers = await get_spotify_headers(db_session)
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=spotify_headers)
+        return response.json()["tracks"]["items"]
 
 
 async def get_all_playlists(db_session: Session) -> dict:
@@ -105,6 +93,7 @@ async def get_all_playlists(db_session: Session) -> dict:
 async def process_playlist_creation(playlist_name: str, db_session: Session) -> dict[str, str]:
     """
     Create a new playlist in the local database and on Spotify.
+    The playlist will include tracks that are not included in any already existing one.
 
     Args:
         playlist_name (str): The name of the playlist to be created.
@@ -117,9 +106,20 @@ async def process_playlist_creation(playlist_name: str, db_session: Session) -> 
         HTTPException: If there is an HTTP error when interacting with Spotify's API.
     """
     try:
-        user_id = await get_current_user_id(db_session)
-        tracks_db = fetch_listened_tracks(db_session)
-        spotify_headers = await get_spotify_headers(db_session)
+        user_id, playlists, spotify_headers = await asyncio.gather(
+            get_current_user_id(db_session),
+            get_all_playlists(db_session),
+            get_spotify_headers(db_session),
+        )
+        tracks = fetch_listened_tracks(db_session)
+        playlist_tracks = await cache_playlist_tracks(playlists["playlists"], db_session)
+        existing_track_titles = list(chain.from_iterable(playlist_tracks.values()))
+        tracks_db = [track for track in tracks if track.title not in existing_track_titles]
+        if not tracks_db:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No new tracks to be added to a playlist.",
+            )
         playlist_id = await create_playlist_on_spotify(user_id, playlist_name, spotify_headers)
         create_playlist_in_db(playlist_name, playlist_id, tracks_db, db_session)
         await add_tracks_to_playlist(
@@ -131,7 +131,8 @@ async def process_playlist_creation(playlist_name: str, db_session: Session) -> 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
         ) from exc
-    return {"message": f"The '{playlist_name}' playlist created successfully."}
+
+    return {"message": f"The '{playlist_name}' playlist was created successfully."}
 
 
 async def create_playlist_on_spotify(
@@ -204,23 +205,42 @@ async def add_tracks_to_playlist(
         response.raise_for_status()
 
 
-def fetch_listened_tracks(db_session: Session) -> list[Track]:
+async def cache_playlist_tracks(playlists, db_session) -> dict[str, set]:
     """
-    Fetch tracks from the database that have been listened to (i.e., have a nonzero listened count).
+    Fetch all tracks for each playlist and store them in a cache dictionary.
 
     Args:
-        db_session (Session): SQLAlchemy session used for database operations.
-
-    Raises:
-        HTTPException: Listened tracks were not found.
+        playlists: List of playlists.
+        db_session: The SQLAlchemy session.
 
     Returns:
-        list[Track]: A list of tracks with a listened count greater than zero.
+        dict[str, set]: A dictionary with playlist IDs as keys and sets of track titles as values.
     """
-    tracks_db = db_session.query(Track).filter(Track.listened_count > 0).all()
-    if not tracks_db:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No tracks you have listened to were found.",
-        )
-    return tracks_db
+    playlist_tracks_cache = {}
+    spotify_headers = await get_spotify_headers(db_session)
+
+    async def fetch_tracks(playlist):
+        spotify_id = playlist["uri"].split(":")[-1]
+        async with httpx.AsyncClient() as client:
+            url = f"{config['SPOTIFY_API_URL']}/playlists/{spotify_id}"
+            response = await client.get(url, headers=spotify_headers)
+            response.raise_for_status()
+            playlist_details = response.json()["tracks"]["items"]
+            playlist_tracks_cache[spotify_id] = {item["track"]["name"] for item in playlist_details}
+
+    await asyncio.gather(*[fetch_tracks(playlist) for playlist in playlists])
+    return playlist_tracks_cache
+
+
+async def is_track_in_any_playlist(track_title: str, playlist_tracks: dict[str, set]) -> bool:
+    """
+    Check if a track title exists in any playlist using the cached playlist tracks.
+
+    Args:
+        track_title (str): The title of the track.
+        playlist_tracks_cache (dict[str, set]): Cached dictionary of playlist tracks.
+
+    Returns:
+        bool: True if the track is in any playlist, False otherwise.
+    """
+    return any(track_title in tracks for tracks in playlist_tracks.values())

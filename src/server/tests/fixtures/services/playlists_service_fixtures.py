@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from app.db.models import Track
 
 from ..constants import ENV_CONFIG_EXAMPLE, SPOTIFY_HEADERS_EXAMPLE
@@ -72,4 +71,10 @@ def mock_config_env():
         "app.services.playlists_service.config",
         ENV_CONFIG_EXAMPLE,
     ) as mock:
+        yield mock
+
+
+@pytest.fixture(scope="function")
+def mock_get_all_playlists():
+    with patch("app.services.playlists_service.get_all_playlists") as mock:
         yield mock

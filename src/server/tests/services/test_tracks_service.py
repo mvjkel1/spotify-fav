@@ -1,15 +1,14 @@
-from unittest.mock import patch
-
 import httpx
 import pytest
-from fastapi import HTTPException, status
-
+from app.db.models import Track
 from app.services.tracks_service import (
+    fetch_listened_tracks,
     get_current_track,
     get_playback_state,
     get_recently_played_tracks,
     handle_playing_track,
 )
+from fastapi import HTTPException, status
 
 from ..conftest import db_session
 from ..fixtures.constants import (
@@ -159,3 +158,26 @@ async def test_handle_playing_track_failure(
     }
     await handle_playing_track(state, db_session)
     mock_process_playing_track.assert_not_awaited()
+
+
+def test_fetch_listened_tracks_success(db_session):
+    test_track = Track(title="Test Track", spotify_id="test_id", listened_count=5)
+    db_session.add(test_track)
+    db_session.commit()
+    response = fetch_listened_tracks(db_session)
+    assert len(response) == 1
+    fetched_track = response[0]
+    assert isinstance(fetched_track, Track)
+    assert fetched_track.title == test_track.title
+    assert fetched_track.spotify_id == test_track.spotify_id
+    assert fetched_track.listened_count == test_track.listened_count
+
+
+def test_fetch_listened_tracks_failure(db_session):
+    test_track = Track(title="Test Track", spotify_id="test_id", listened_count=0)
+    db_session.add(test_track)
+    db_session.commit()
+    with pytest.raises(HTTPException) as exc:
+        fetch_listened_tracks(db_session)
+    assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+    assert exc.value.detail == "No tracks you have listened to were found."

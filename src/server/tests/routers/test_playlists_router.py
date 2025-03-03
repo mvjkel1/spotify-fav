@@ -38,7 +38,7 @@ def test_get_my_playlists(
 ):
     mock_get_playlists_from_spotify.return_value = mock_return_value
     mock_get_playlists_from_spotify.side_effect = mock_side_effect
-    response = test_client.get(f"{PATH}/get")
+    response = test_client.get(f"{PATH}/")
     assert response.status_code == expected_status
     assert response.json() == expected_response
     mock_get_playlists_from_spotify.assert_awaited_with(0, 20, db_session)
