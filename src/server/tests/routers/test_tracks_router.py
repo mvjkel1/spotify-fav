@@ -1,10 +1,14 @@
-from unittest.mock import ANY
+from unittest import mock
 
 import pytest
 from fastapi import HTTPException, status
 
 from ..conftest import db_session, test_client
-from ..fixtures.constants import TRACK_DATA_DICT_EXAMPLE
+from ..fixtures.constants import (
+    GET_RECENTLY_PLAYED_TRACKS_DEFAULT_LIMIT,
+    TRACK_DATA_DICT_EXAMPLE,
+    USER_SCHEMA_EXAMPLE,
+)
 from ..fixtures.routers.tracks_router_fixtures import (
     mock_get_current_track,
     mock_get_playback_state,
@@ -29,7 +33,8 @@ PATH = "/tracks"
         ),
     ],
 )
-def test_get_current_track(
+@pytest.mark.asyncio
+async def test_get_current_track(
     test_client,
     db_session,
     mock_get_current_track,
@@ -40,10 +45,10 @@ def test_get_current_track(
 ):
     mock_get_current_track.return_value = mock_return_value
     mock_get_current_track.side_effect = mock_side_effect
-    response = test_client.get(f"{PATH}/current")
+    response = await test_client.get(f"{PATH}/current")
     assert response.status_code == expected_status
     assert response.json() == expected_response
-    mock_get_current_track.assert_awaited_with(db_session)
+    mock_get_current_track.assert_awaited_with(1, db_session)
 
 
 @pytest.mark.parametrize(
@@ -68,7 +73,8 @@ def test_get_current_track(
         ),
     ],
 )
-def test_poll(
+@pytest.mark.asyncio
+async def test_poll(
     test_client,
     db_session,
     mock_start_polling_tracks,
@@ -79,10 +85,10 @@ def test_poll(
 ):
     mock_start_polling_tracks.return_value = mock_return_value
     mock_start_polling_tracks.side_effect = mock_side_effect
-    response = test_client.post(f"{PATH}/polling/start")
+    response = await test_client.post(f"{PATH}/polling/start")
     assert response.status_code == expected_status_code
     assert response.json() == expected_response
-    mock_start_polling_tracks.assert_awaited_once_with(ANY, db_session)
+    mock_start_polling_tracks.assert_awaited_once_with(mock.ANY, mock.ANY, db_session)
 
 
 @pytest.mark.parametrize(
@@ -102,7 +108,8 @@ def test_poll(
         ),
     ],
 )
-def test_get_recently_played(
+@pytest.mark.asyncio
+async def test_get_recently_played_tracks(
     test_client,
     db_session,
     mock_get_recently_played_tracks,
@@ -113,10 +120,12 @@ def test_get_recently_played(
 ):
     mock_get_recently_played_tracks.return_value = mock_return_value
     mock_get_recently_played_tracks.side_effect = mock_side_effect
-    response = test_client.get(f"{PATH}/recently-played")
+    response = await test_client.get(f"{PATH}/recently-played")
     assert response.status_code == expected_status
     assert response.json() == expected_response
-    mock_get_recently_played_tracks.assert_awaited_with(db_session, 1)
+    mock_get_recently_played_tracks.assert_awaited_with(
+        USER_SCHEMA_EXAMPLE.id, db_session, GET_RECENTLY_PLAYED_TRACKS_DEFAULT_LIMIT
+    )
 
 
 @pytest.mark.parametrize(
@@ -131,7 +140,8 @@ def test_get_recently_played(
         ),
     ],
 )
-def test_get_playback_state(
+@pytest.mark.asyncio
+async def test_get_playback_state(
     test_client,
     db_session,
     mock_get_playback_state,
@@ -142,7 +152,7 @@ def test_get_playback_state(
 ):
     mock_get_playback_state.return_value = mock_return_value
     mock_get_playback_state.side_effect = mock_side_effect
-    response = test_client.get(f"{PATH}/playback/state")
+    response = await test_client.get(f"{PATH}/playback/state")
     assert response.status_code == expected_status
     assert response.json() == expected_response
-    mock_get_playback_state.assert_awaited_with(db_session)
+    mock_get_playback_state.assert_awaited_with(USER_SCHEMA_EXAMPLE.id, db_session)
