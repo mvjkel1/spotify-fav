@@ -24,6 +24,7 @@ from ..fixtures.services.playlists_service_fixtures import (
     mock_get_all_playlists,
     mock_get_current_user_id,
     mock_get_spotify_headers,
+    mock_sync_playlists,
 )
 
 
@@ -75,6 +76,7 @@ async def test_process_playlist_creation_success(
     mock_get_all_playlists,
     mock_fetch_listened_tracks,
     mock_create_playlist_on_spotify,
+    mock_sync_playlists,
 ):
     mock_request = httpx.Request("POST", "mock_request")
     mock_async_client_post.return_value = httpx.Response(200, json={}, request=mock_request)
@@ -96,6 +98,7 @@ async def test_process_playlist_creation_failure(
     mock_get_all_playlists,
     mock_fetch_listened_tracks,
     mock_create_playlist_on_spotify,
+    mock_sync_playlists,
 ):
     mock_request = httpx.Request("POST", "mock_request")
     mock_async_client_post.return_value = httpx.Response(
