@@ -49,9 +49,7 @@ def mock_config():
 )
 @patch("app.endpoints.user_auth.get_spotify_headers", return_value=HEADERS)
 @pytest.mark.parametrize("expected_output", [USER_DATA])
-async def test_get_current_user_success(
-    mock_spotify_headers, mock_async_client, expected_output
-):
+async def test_get_current_user_success(mock_spotify_headers, mock_async_client, expected_output):
     result = await get_current_user()
     assert result == expected_output
     mock_async_client.assert_called_once_with(
@@ -64,9 +62,7 @@ async def test_get_current_user_success(
 @patch("app.endpoints.user_auth.get_spotify_headers", return_value=HEADERS)
 @patch(
     "app.endpoints.user_auth.httpx.AsyncClient.get",
-    side_effect=HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
-    ),
+    side_effect=HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"),
 )
 @pytest.mark.parametrize(
     "expected_status_code, expected_message",
@@ -95,9 +91,7 @@ async def test_get_current_user_id_success(mock_get_current_user, db_session):
 @pytest.mark.asyncio
 @patch(
     "app.endpoints.user_auth.get_current_user",
-    side_effect=HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
-    ),
+    side_effect=HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"),
 )
 @pytest.mark.parametrize(
     "expected_status_code, expected_message",
