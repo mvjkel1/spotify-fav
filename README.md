@@ -4,6 +4,9 @@ _For those who (really) don't like the Spotify "next song" algorithm_
 
 ## Overview
 
+> [!IMPORTANT]
+> This project is still in the early stages of development. However, you may find it useful in its current form, as the core functionalities of the API are working fine.
+
 **_spotify-fav_** is a personal tool designed to track your listening habits on Spotify. It monitors how often you've played a track and helps you create playlists based on songs you haven't skipped. A song is considered "not skipped" if it's still playing with 10 seconds or less remaining when the system polls the current playback state.
 Since the API is not deployed anywhere at the moment (it runs on localhost), it is needed to follow all the steps mentioned in "Getting Started" section below.
 
