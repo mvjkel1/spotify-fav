@@ -66,7 +66,7 @@ target_metadata = Base.metadata
 - Execute the `run.sh` script, e.g. `./run.sh server`
 - Open the browser and navigate to `http://127.0.0.1:8000/docs`
 - To access the core API routes, you need to log in first, to do it:
-  - Generate the Login URL: Execute the /user-auth/login route to generate your unique login URL.
-  - Authenticate: Copy the URL and paste it into your browser. Enter your Spotify credentials to log in.
+  - Generate the Login URL: Execute the /user-auth/login route to generate your unique login URL
+  - Authenticate: Copy the URL and paste it into your browser. Enter your Spotify credentials to log in
   - After successful login you should be redirected back to `http://127.0.0.1:8000/docs`
 - Have fun
