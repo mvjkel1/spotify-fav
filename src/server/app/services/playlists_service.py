@@ -2,15 +2,14 @@ import asyncio
 from itertools import chain
 
 import httpx
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
-from upstash_redis.asyncio import Redis
-
 from app.db.models import Playlist, Track
 from app.services.token_manager import get_spotify_headers
 from app.services.tracks_service import fetch_listened_tracks
 from app.services.user_auth_service import get_current_user_id
-from app.services.utils import config, time_it_async
+from app.services.utils import config
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+from upstash_redis.asyncio import Redis
 
 
 async def get_playlists_from_spotify(offset: int, limit: int, db_session: Session) -> dict:
