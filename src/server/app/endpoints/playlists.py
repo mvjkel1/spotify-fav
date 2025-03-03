@@ -43,9 +43,7 @@ async def get_my_playlists(db_session: Session = Depends(get_db)) -> dict:
 
 
 @router.post("/playlists")
-async def create_playlist(
-    playlist_name: str, db_session: Session = Depends(get_db)
-) -> dict:
+async def create_playlist(playlist_name: str, db_session: Session = Depends(get_db)) -> dict:
     """
     Create a new playlist both locally in the database and remotely on Spotify,
     and populate it with tracks.
@@ -66,17 +64,13 @@ async def create_playlist(
         tracks_db = get_tracks_for_playlist(db_session)
         playlist = create_playlist_in_db(playlist_name, tracks_db, db_session)
         spotify_headers = await get_spotify_headers(db_session)
-        playlist_id = await create_playlist_on_spotify(
-            user_id, playlist, spotify_headers
-        )
+        playlist_id = await create_playlist_on_spotify(user_id, playlist, spotify_headers)
         await add_tracks_to_playlist(
             playlist_id, [track.spotify_id for track in tracks_db], spotify_headers
         )
         return {"message": "Playlist created successfully."}
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(
-            status_code=exc.response.status_code, detail=exc.response.text
-        ) from exc
+        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text) from exc
 
 
 def get_tracks_for_playlist(db_session: Session) -> list:
@@ -92,9 +86,7 @@ def get_tracks_for_playlist(db_session: Session) -> list:
     return db_session.query(Track).filter(Track.listened_count > 0).all()
 
 
-def create_playlist_in_db(
-    playlist_name: str, tracks: list, db_session: Session
-) -> Playlist:
+def create_playlist_in_db(playlist_name: str, tracks: list, db_session: Session) -> Playlist:
     """
     Create a new playlist entry in the local database and associate it with the given tracks.
 
@@ -138,9 +130,7 @@ async def create_playlist_on_spotify(
         return response.json()["id"]
 
 
-async def add_tracks_to_playlist(
-    playlist_id: str, track_ids: list[str], spotify_headers
-) -> None:
+async def add_tracks_to_playlist(playlist_id: str, track_ids: list[str], spotify_headers) -> None:
     """
     Add tracks to a Spotify playlist.
 
