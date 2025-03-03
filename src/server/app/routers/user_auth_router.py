@@ -33,7 +33,7 @@ async def login() -> dict:
     Returns:
         dict: A dictionary containing the Spotify login URL.
     """
-    return generate_spotify_login_url()
+    return await generate_spotify_login_url()
 
 
 @router.get("/callback")
