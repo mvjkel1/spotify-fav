@@ -29,7 +29,8 @@ async def test_lifespan(app: FastAPI):
     yield
 
 
-@pytest.fixture(scope="function")
+# Need to explicitly use pytest_asyncio.fixture to make github actions work
+@pytest_asyncio.fixture(scope="function")
 async def db_session():
     connection = await async_engine.connect()
     transaction = await connection.begin()
@@ -49,7 +50,8 @@ def mock_current_user():
     return USER_SCHEMA_EXAMPLE
 
 
-@pytest.fixture(scope="function")
+# Need to explicitly use pytest_asyncio.fixture to make github actions work
+@pytest_asyncio.fixture(scope="function")
 async def test_client(db_session, mock_current_user):
     """Create a test client that uses the override_get_db fixture to return a session."""
 
