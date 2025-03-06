@@ -26,11 +26,10 @@ async def add_test_user(db_session: AsyncSession):
 
 async def add_test_user_and_track(db_session: AsyncSession):
     await add_test_user(db_session)
-    test_track = TRACK_EXAMPLE_DB
-    db_session.add(test_track)
+    db_session.add(TRACK_EXAMPLE_DB)
     await db_session.execute(
         insert(user_track_association_table).values(
-            user_id=USER_ID_EXAMPLE, track_id=test_track.id, listened_count=1
+            user_id=USER_ID_EXAMPLE, track_id=TRACK_EXAMPLE_DB.id, listened_count=1
         )
     )
     await db_session.commit()
