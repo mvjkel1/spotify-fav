@@ -163,7 +163,7 @@ async def verify_token(token: str):
 async def get_current_user(
     jwt_token: Annotated[str, Depends(OAUTH2_SCHEME)],
     db_session: Annotated[AsyncSession, Depends(async_get_db)],
-):
+) -> User:
     """
     Retrieve the current user based on the provided JWT token.
 

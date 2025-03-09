@@ -29,6 +29,10 @@ USER_DATA_EXAMPLE = {
     "email": "testuser@example.com",
 }
 
+USER_DATA_NO_ID_EXAMPLE = {
+    "email": "testuser@example.com",
+}
+
 USER_DATA_EXAMPLE_MALFORMED = {
     "XiXdX": "user123",
     "display_name": "Test User",
@@ -103,3 +107,5 @@ TRACKS_LIST_EXAMPLE = [
 USER_EXAMPLE_DB = User(id=1, spotify_uid=1, email="user@example.com", hashed_password="P!w!D")
 
 USER_SCHEMA_EXAMPLE = UserSchema(id=1, email="test@example.com", is_polling=False)
+
+JWT_TOKEN_EXAMPLE_ENCODED = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
