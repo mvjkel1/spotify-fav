@@ -1,12 +1,10 @@
 import httpx
 import pytest
-from fastapi import status, HTTPException
+from app.services.spotify_auth_service import get_current_spotify_user_id, get_spotify_user
+from fastapi import HTTPException, status
 from httpx import HTTPStatusError
 
-from app.services.spotify_auth_service import (
-    get_current_spotify_user_id,
-    get_spotify_user,
-)
+from ..conftest import db_session
 from ..fixtures.constants import (
     GET_CURRENT_USER_URL,
     SPOTIFY_HEADERS_EXAMPLE,
@@ -16,17 +14,15 @@ from ..fixtures.constants import (
 )
 from ..fixtures.services.spotify_auth_service_fixtures import (
     mock_async_client_get,
+    mock_build_spotify_auth_headers,
+    mock_build_spotify_token_request_data,
     mock_config_env,
+    mock_exchange_token_with_spotify,
     mock_get_current_user,
     mock_get_spotify_headers,
     mock_get_spotify_user,
-    mock_build_spotify_auth_headers,
-    mock_build_spotify_token_request_data,
-    mock_exchange_token_with_spotify,
     mock_save_spotify_token,
 )
-
-from ..conftest import db_session
 
 
 @pytest.mark.asyncio

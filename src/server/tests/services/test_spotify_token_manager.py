@@ -1,10 +1,6 @@
 from time import time
 
 import pytest
-from fastapi import HTTPException, status
-from httpx import HTTPStatusError, Request, Response, TimeoutException
-from sqlalchemy import select
-
 from app.db.models import SpotifyAccessToken
 from app.services.spotify_token_manager import (
     get_spotify_headers,
@@ -13,14 +9,17 @@ from app.services.spotify_token_manager import (
     refresh_spotify_access_token,
     save_spotify_token,
 )
+from fastapi import HTTPException, status
+from httpx import HTTPStatusError, Request, Response, TimeoutException
+from sqlalchemy import select
 
 from ..conftest import db_session
 from ..fixtures.services.spotify_token_manager_fixtures import (
-    mock_spotify_expired_token,
     mock_async_client_post,
     mock_config_env,
     mock_get_spotify_token,
     mock_refresh_access_token,
+    mock_spotify_expired_token,
     mock_spotify_valid_token,
 )
 

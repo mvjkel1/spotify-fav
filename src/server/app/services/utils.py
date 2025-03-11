@@ -2,9 +2,10 @@ import os
 from random import choice
 from string import ascii_letters, digits
 from time import perf_counter
-from jose import jwt
+
 from dotenv import dotenv_values, find_dotenv
 from fastapi import HTTPException, Request
+from jose import jwt
 
 env_path = find_dotenv()
 config = dotenv_values(env_path)

@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from tests.fixtures.constants import ENV_CONFIG_EXAMPLE
 
 
