@@ -3,13 +3,14 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
+from fastapi import HTTPException, status
+
 from app.db.models import Track
 from app.services.playlists_service import (
     fetch_listened_tracks,
     get_my_playlists_from_spotify,
     process_playlist_creation,
 )
-from fastapi import HTTPException, status
 
 from ..conftest import db_session
 from ..fixtures.constants import (

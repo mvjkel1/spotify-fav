@@ -2,8 +2,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from ..constants import ENV_CONFIG_EXAMPLE
-
 
 @pytest.fixture(scope="function")
 def mock_generate_spotify_login_url():

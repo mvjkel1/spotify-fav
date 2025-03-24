@@ -1,3 +1,6 @@
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from app.db.database import get_db
 from app.services.tracks_service import (
     get_current_track,
@@ -6,8 +9,6 @@ from app.services.tracks_service import (
     poll_playback_state,
 )
 from app.services.user_auth_service import is_user_authorized
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["tracks"], prefix="/tracks")
 

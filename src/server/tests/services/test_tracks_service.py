@@ -2,13 +2,14 @@ from unittest.mock import patch
 
 import httpx
 import pytest
+from fastapi import HTTPException, status
+
 from app.services.tracks_service import (
     get_current_track,
     get_playback_state,
     get_recently_played_tracks,
     handle_playing_track,
 )
-from fastapi import HTTPException, status
 
 from ..conftest import db_session
 from ..fixtures.constants import (
