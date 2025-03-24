@@ -29,4 +29,4 @@ jobs:
     - name: Run Pylint
       run: |
         . venv/bin/activate
-        pylint src/*
+        pylint src/**.py
