@@ -1,7 +1,7 @@
 import httpx
 import status
 from dotenv import dotenv_values, find_dotenv
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -15,13 +15,18 @@ router = APIRouter(tags=["playlists"])
 
 
 @router.get("/playlists")
-async def get_my_playlists(db_session: Session = Depends(get_db)) -> dict:
+async def get_my_playlists(
+    offset: int = Query(0),
+    limit: int = Query(20, ge=1),
+    db_session: Session = Depends(get_db),
+) -> dict:
     """
     Retrieve the current user's playlists from Spotify.
 
     Args:
+        offset (int): The index of the first playlist to return. Default is 0.
+        limit (int): The number of playlists to return. Default is 20. Minimum is 1.
         db_session (Session): SQLAlchemy session used to obtain the Spotify headers.
-
     Returns:
         dict: A JSON response from Spotify containing the user's playlists.
 
@@ -33,7 +38,7 @@ async def get_my_playlists(db_session: Session = Depends(get_db)) -> dict:
     async with httpx.AsyncClient() as client:
         try:
             user_id = await get_current_user_id(db_session)
-            url = f"{config['SPOTIFY_API_URL']}/users/{user_id}/playlists"
+            url = f"{config['SPOTIFY_API_URL']}/users/{user_id}/playlists?offset={offset}&limit={limit}"
             response = await client.get(url, headers=headers)
             response.raise_for_status()
             return response.json()
