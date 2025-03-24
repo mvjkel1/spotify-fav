@@ -30,12 +30,6 @@ def mock_async_client_post():
         yield mock
 
 
-@pytest.fixture(scope="module")
-def mock_get_current_user():
-    with patch("app.services.user_auth_service.get_current_user") as mock:
-        yield mock
-
-
 @pytest.fixture(scope="module", autouse=True)
 def mock_config_env():
     with patch(
@@ -54,6 +48,12 @@ def mock_generate_random_string():
 
 
 @pytest.fixture(scope="module")
+def mock_get_current_user_service():
+    with patch("app.services.user_auth_service.get_current_user") as mock:
+        yield mock
+
+
+@pytest.fixture(scope="module")
 def mock_generate_spotify_login_url():
     with patch(
         "app.routers.user_auth_router.generate_spotify_login_url",
@@ -68,4 +68,10 @@ def mock_handle_spotify_callback():
         "app.routers.user_auth_router.handle_spotify_callback",
         new_callable=AsyncMock,
     ) as mock:
+        yield mock
+
+
+@pytest.fixture(scope="module")
+def mock_get_current_user_router():
+    with patch("app.routers.user_auth_router.get_current_user") as mock:
         yield mock

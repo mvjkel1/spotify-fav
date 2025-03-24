@@ -23,7 +23,7 @@ from ..fixtures.user_auth_fixtures import (
     mock_async_client_post,
     mock_config_env,
     mock_generate_random_string,
-    mock_get_current_user,
+    mock_get_current_user_service,
     mock_get_spotify_headers,
 )
 
@@ -49,15 +49,15 @@ async def test_get_current_user_failure(db_session):
 
 
 @pytest.mark.asyncio
-async def test_get_current_user_id_success(mock_get_current_user, db_session):
-    mock_get_current_user.return_value = USER_DATA_EXAMPLE
+async def test_get_current_user_id_success(mock_get_current_user_service, db_session):
+    mock_get_current_user_service.return_value = USER_DATA_EXAMPLE
     result = await get_current_user_id(db_session)
     assert result == "user123"
 
 
 @pytest.mark.asyncio
-async def test_get_current_user_id_failure(mock_get_current_user, db_session):
-    mock_get_current_user.return_value = USER_DATA_EXAMPLE_MALFORMED
+async def test_get_current_user_id_failure(mock_get_current_user_service, db_session):
+    mock_get_current_user_service.return_value = USER_DATA_EXAMPLE_MALFORMED
     with pytest.raises(HTTPException) as exc:
         await get_current_user_id(db_session)
     assert exc.value.status_code == status.HTTP_400_BAD_REQUEST
