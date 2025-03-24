@@ -15,7 +15,7 @@ async def get_my_playlists(
     offset: int = Query(0),
     limit: int = Query(20, ge=1),
     db_session: Session = Depends(get_db),
-) -> dict[str, str]:
+) -> dict:
     """
     Retrieve user's playlists from Spotify.
 
@@ -25,16 +25,14 @@ async def get_my_playlists(
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
-        dict[str, str]: A dictionary containing the playlists retrieved from Spotify.
+        dict: A dictionary containing the playlists retrieved from Spotify.
     """
     user_id = await get_current_user_id(db_session)
     return await get_my_playlists_from_spotify(user_id, offset, limit, db_session)
 
 
 @router.post("/playlists")
-async def create_playlist(
-    playlist_name: str, db_session: Session = Depends(get_db)
-) -> dict[str, str]:
+async def create_playlist(playlist_name: str, db_session: Session = Depends(get_db)) -> dict:
     """
     Create a new playlist in the local database and on Spotify.
 
@@ -43,6 +41,6 @@ async def create_playlist(
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
-        dict[str, str]: A dictionary containing the result message.
+        dict: A dictionary containing the result message.
     """
     return await create_playlist_service(playlist_name, db_session)

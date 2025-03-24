@@ -12,7 +12,7 @@ router = APIRouter(tags=["user_auth"], prefix="/user-auth")
 
 
 @router.get("/me")
-async def get_me(db_session: Session = Depends(get_db)) -> dict[str, str]:
+async def get_me(db_session: Session = Depends(get_db)) -> dict:
     """
     Retrieve the current user's information from the database.
 
@@ -20,7 +20,7 @@ async def get_me(db_session: Session = Depends(get_db)) -> dict[str, str]:
         db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
-        dict[str, str]: A dictionary containing the current user's information.
+        dict: A dictionary containing the current user's information.
     """
     return await get_current_user(db_session)
 

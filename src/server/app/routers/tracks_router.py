@@ -14,7 +14,7 @@ router = APIRouter(tags=["tracks"], prefix="/tracks")
 
 
 @router.get("/current-track")
-async def current_track(db_session: Session = Depends(get_db)) -> dict[str, str]:
+async def current_track(db_session: Session = Depends(get_db)) -> dict:
     """
     Retrieve the current track being played.
 
@@ -22,7 +22,7 @@ async def current_track(db_session: Session = Depends(get_db)) -> dict[str, str]
         db_session (Session): The database session to use.
 
     Returns:
-        dict[str, str]: A dictionary containing details of the current track.
+        dict: A dictionary containing details of the current track.
     """
     return await get_current_track(db_session)
 
@@ -50,9 +50,7 @@ async def poll(
 
 
 @router.get("/recently-played")
-async def get_recently_played(
-    limit: int = 1, db_session: Session = Depends(get_db)
-) -> dict[str, str]:
+async def get_recently_played(limit: int = 1, db_session: Session = Depends(get_db)) -> dict:
     """
     Retrieve recently played tracks.
 
@@ -61,13 +59,13 @@ async def get_recently_played(
         limit (int): The number of recently played tracks to retrieve. Default is 1.
 
     Returns:
-        dict[str, str]: A dictionary containing details of the recently played tracks.
+        dict: A dictionary containing details of the recently played tracks.
     """
     return await get_recently_played_tracks(db_session, limit)
 
 
 @router.get("/playback-state")
-async def playback_state(db_session: Session = Depends(get_db)) -> dict[str, str]:
+async def playback_state(db_session: Session = Depends(get_db)) -> dict:
     """
     Retrieve the current playback state.
 
@@ -75,6 +73,6 @@ async def playback_state(db_session: Session = Depends(get_db)) -> dict[str, str
         db_session (Session): The database session to use.
 
     Returns:
-        dict[str, str]: A dictionary containing details of the current playback state.
+        dict: A dictionary containing details of the current playback state.
     """
     return await get_playback_state(db_session)
