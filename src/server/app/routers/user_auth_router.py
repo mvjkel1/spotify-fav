@@ -1,13 +1,12 @@
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
-
 from app.db.database import get_db
 from app.services.user_auth_service import (
     generate_spotify_login_url,
     get_current_user,
     handle_spotify_callback,
 )
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["user_auth"], prefix="/user-auth")
 

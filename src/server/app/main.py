@@ -1,8 +1,7 @@
-from fastapi import FastAPI
-
 import app.routers.playlists_router as playlists_router
 import app.routers.tracks_router as tracks_router
 import app.routers.user_auth_router as user_auth_router
+from fastapi import FastAPI
 
 app = FastAPI()
 
