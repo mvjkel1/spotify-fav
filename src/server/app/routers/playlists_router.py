@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 router = APIRouter(tags=["playlists"], prefix="/playlists")
 
 
-@router.get("/")
+@router.get("")
 async def get_playlists(
     offset: int = Query(0),
     limit: int = Query(20, ge=1),
