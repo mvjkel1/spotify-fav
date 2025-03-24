@@ -6,7 +6,7 @@ class TokenRequest(BaseModel):
     client_secret: str
 
 
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str
-    expires_in: int
+class PlaybackStateResponse(BaseModel):
+    is_playing: bool
+    progress_ms: int
+    item: dict
