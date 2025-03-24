@@ -65,3 +65,15 @@ def mock_is_user_authorized():
 def mock_poll_playback_state():
     with patch("app.routers.tracks_router.poll_playback_state") as mock:
         yield mock
+
+
+@pytest.fixture(scope="function")
+def mock_get_recently_played_tracks():
+    with patch("app.routers.tracks_router.get_recently_played_tracks") as mock:
+        yield mock
+
+
+@pytest.fixture(scope="function")
+def mock_get_playback_state():
+    with patch("app.routers.tracks_router.get_playback_state") as mock:
+        yield mock
