@@ -1,13 +1,8 @@
-from typing import Annotated, Any
-
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException
 
-from database import get_db
 
 router = APIRouter()
-db_dependency = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/current_music")
@@ -59,8 +54,3 @@ async def playback_state(access_token: str):
         if response.status_code == 200:
             return response.json()
         raise HTTPException(status_code=response.status_code, detail=response.text)
-
-
-# TODO
-# async def post_track():
-#     pass
