@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from app.db.models import AccessToken
+from ..constants import ENV_CONFIG_EXAMPLE
 
 
 @pytest.fixture(scope="function")
@@ -34,4 +35,13 @@ def mock_async_client_post():
 @pytest.fixture(scope="function")
 def mock_get_token():
     with patch("app.services.token_manager.get_token") as mock:
+        yield mock
+
+
+@pytest.fixture(scope="module", autouse=True)
+def mock_config_env():
+    with patch(
+        "app.services.token_manager.config",
+        ENV_CONFIG_EXAMPLE,
+    ) as mock:
         yield mock
