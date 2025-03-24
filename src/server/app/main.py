@@ -1,20 +1,10 @@
+import app.routers.playlists_router as playlists_router
+import app.routers.tracks_router as tracks_router
+import app.routers.user_auth_router as user_auth_router
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-import app.endpoints.playlists as playlists
-import app.endpoints.tracks as tracks
-import app.endpoints.user_auth as user_auth
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(user_auth.router, prefix="/user-auth")
-app.include_router(tracks.router, prefix="/music")
-app.include_router(playlists.router, prefix="/music")
+app.include_router(user_auth_router.router)
+app.include_router(tracks_router.router)
+app.include_router(playlists_router.router)
