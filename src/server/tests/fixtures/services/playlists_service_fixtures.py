@@ -4,7 +4,7 @@ import pytest
 
 from app.db.models import Track
 
-from .constants import ENV_CONFIG_EXAMPLE, SPOTIFY_HEADERS_EXAMPLE
+from ..constants import ENV_CONFIG_EXAMPLE, SPOTIFY_HEADERS_EXAMPLE
 
 
 @pytest.fixture(scope="function")

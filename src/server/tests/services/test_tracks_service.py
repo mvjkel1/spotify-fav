@@ -2,21 +2,21 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-from fastapi import HTTPException, status
-
 from app.services.tracks_service import (
     get_current_track,
     get_playback_state,
     get_recently_played_tracks,
     handle_playing_track,
 )
+from fastapi import HTTPException, status
+
+from ..conftest import db_session
 from ..fixtures.constants import (
     GET_CURRENT_TRACK_URL,
     GET_PLAYBACK_STATE_URL,
     GET_RECENTLY_PLAYED_TRACKS_URL,
 )
-from ..conftest import db_session
-from ..fixtures.tracks_fixtures import (
+from ..fixtures.services.tracks_service_fixtures import (
     SPOTIFY_HEADERS_EXAMPLE,
     mock_async_client_get,
     mock_config_env,
@@ -66,7 +66,9 @@ async def test_get_recently_played_tracks_success(
 ):
     mock_request = httpx.Request("GET", "mock_request")
     mock_async_client_get.return_value = httpx.Response(
-        status_code=200, json={"track1": "track1", "track2": "track2"}, request=mock_request
+        status_code=200,
+        json={"track1": "track1", "track2": "track2"},
+        request=mock_request,
     )
     response = await get_recently_played_tracks(db_session)
     mock_async_client_get.assert_awaited_with(

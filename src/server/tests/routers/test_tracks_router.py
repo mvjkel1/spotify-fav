@@ -1,15 +1,16 @@
 import httpx
 import pytest
 from fastapi import HTTPException, status
+
 from ..conftest import db_session, test_client
-from ..fixtures.tracks_fixtures import (
+from ..fixtures.constants import TRACK_DATA_DICT_EXAMPLE
+from ..fixtures.routers.tracks_router_fixtures import (
     mock_get_current_track,
-    mock_is_user_authorized,
-    mock_poll_playback_state,
     mock_get_playback_state,
     mock_get_recently_played_tracks,
+    mock_is_user_authorized,
+    mock_poll_playback_state,
 )
-from ..fixtures.constants import TRACK_DATA_DICT_EXAMPLE
 
 PATH = "/tracks"
 

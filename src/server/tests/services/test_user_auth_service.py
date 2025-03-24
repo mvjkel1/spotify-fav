@@ -2,15 +2,14 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-from fastapi import HTTPException, status
-from fastapi.responses import RedirectResponse
-
 from app.services.user_auth_service import (
     generate_spotify_login_url,
     get_current_user,
     get_current_user_id,
     handle_spotify_callback,
 )
+from fastapi import HTTPException, status
+from fastapi.responses import RedirectResponse
 
 from ..conftest import db_session
 from ..fixtures.constants import (
@@ -18,7 +17,7 @@ from ..fixtures.constants import (
     USER_DATA_EXAMPLE,
     USER_DATA_EXAMPLE_MALFORMED,
 )
-from ..fixtures.user_auth_fixtures import (
+from ..fixtures.services.user_auth_service_fixtures import (
     mock_async_client_get,
     mock_async_client_post,
     mock_config_env,
@@ -32,7 +31,9 @@ from ..fixtures.user_auth_fixtures import (
 async def test_get_current_user_success(
     db_session, mock_get_spotify_headers, mock_async_client_get
 ):
-    mock_async_client_get.return_value = httpx.Response(status_code=200, json=USER_DATA_EXAMPLE)
+    mock_async_client_get.return_value = httpx.Response(
+        status_code=200, json=USER_DATA_EXAMPLE
+    )
     result = await get_current_user(db_session)
     assert result == USER_DATA_EXAMPLE
 
@@ -114,7 +115,9 @@ async def test_handle_spotify_callback_invalid_token_response(
 
 
 @pytest.mark.asyncio
-async def test_handle_spotify_callback_spotify_http_error(mock_async_client_post, db_session):
+async def test_handle_spotify_callback_spotify_http_error(
+    mock_async_client_post, db_session
+):
     mock_async_client_post.side_effect = httpx.HTTPStatusError(
         message="Unauthorized",
         request=None,
@@ -127,8 +130,12 @@ async def test_handle_spotify_callback_spotify_http_error(mock_async_client_post
 
 
 @pytest.mark.asyncio
-async def test_handle_spotify_callback_spotify_request_error(mock_async_client_post, db_session):
-    mock_async_client_post.side_effect = httpx.RequestError("Request failed", request=None)
+async def test_handle_spotify_callback_spotify_request_error(
+    mock_async_client_post, db_session
+):
+    mock_async_client_post.side_effect = httpx.RequestError(
+        "Request failed", request=None
+    )
     with pytest.raises(HTTPException) as exc:
         await handle_spotify_callback("valid_code", db_session)
     assert exc.value.status_code == status.HTTP_502_BAD_GATEWAY
