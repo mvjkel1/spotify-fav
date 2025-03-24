@@ -6,7 +6,7 @@ This project is currently in its early development stages, and the README is bei
 
 ### Overview
 
-# For those who (really) don't like the Spotify "next song" algorithm.
+## For those who (really) don't like the Spotify "next song" algorithm.
 
 The project target is to serve as a personal tool to monitor Spotify listening habits.
 It it capable to track the number of times you have listened to a track on Spotify.
