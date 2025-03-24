@@ -43,9 +43,7 @@ async def test_get_my_playlists_from_spotify_success(
     )
     response = await get_my_playlists_from_spotify(0, 10, db_session)
     assert response == {"playlist1": "playlist1", "playlist2": "playlist2"}
-    mock_async_client_get.assert_awaited_with(
-        GET_MY_PLAYLISTS_URL, headers=SPOTIFY_HEADERS_EXAMPLE
-    )
+    mock_async_client_get.assert_awaited_with(GET_MY_PLAYLISTS_URL, headers=SPOTIFY_HEADERS_EXAMPLE)
 
 
 @pytest.mark.asyncio
@@ -65,9 +63,7 @@ async def test_get_my_playlists_from_spotify_failure(
         await get_my_playlists_from_spotify(0, 10, db_session)
     assert exc.value.status_code == status.HTTP_404_NOT_FOUND
     assert exc.value.detail == json.dumps({"ERROR": "ERROR"})
-    mock_async_client_get.assert_awaited_with(
-        GET_MY_PLAYLISTS_URL, headers=SPOTIFY_HEADERS_EXAMPLE
-    )
+    mock_async_client_get.assert_awaited_with(GET_MY_PLAYLISTS_URL, headers=SPOTIFY_HEADERS_EXAMPLE)
     mock_get_spotify_headers.assert_called_once_with(db_session)
 
 
@@ -81,9 +77,7 @@ async def test_process_playlist_creation_success(
     mock_create_playlist_on_spotify,
 ):
     mock_request = httpx.Request("POST", "mock_request")
-    mock_async_client_post.return_value = httpx.Response(
-        200, json={}, request=mock_request
-    )
+    mock_async_client_post.return_value = httpx.Response(200, json={}, request=mock_request)
     response = await process_playlist_creation("test", db_session)
     assert response == {"message": "The 'test' playlist created successfully."}
     mock_async_client_post.assert_awaited_with(
