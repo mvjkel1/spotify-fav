@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
 from app.db.models import Track
 
 from ..constants import ENV_CONFIG_EXAMPLE, SPOTIFY_HEADERS_EXAMPLE
@@ -83,4 +84,26 @@ def mock_get_all_playlists():
 @pytest.fixture(scope="function")
 def mock_sync_playlists():
     with patch("app.services.playlists_service.sync_playlists") as mock:
+        yield mock
+
+
+class MockRedisClient:
+    def __init__(self, url=None, token=None):
+        self.url = url or ENV_CONFIG_EXAMPLE["REDIS_URL"]
+        self.token = token or ENV_CONFIG_EXAMPLE["REDIS_TOKEN"]
+        self.cache = {}
+
+    async def get(self, key: str):
+        return self.cache.get(key)
+
+    async def set(self, key: str, value: str, ex: int = None):
+        self.cache[key] = value
+
+    async def close(self):
+        self.cache.clear()
+
+
+@pytest.fixture(scope="function")
+def mock_redis():
+    with patch("app.services.playlists_service.Redis", MockRedisClient) as mock:
         yield mock

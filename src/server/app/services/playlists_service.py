@@ -4,12 +4,13 @@ from itertools import chain
 import httpx
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from upstash_redis.asyncio import Redis
 
-from app.db.models import Playlist
+from app.db.models import Playlist, Track
 from app.services.token_manager import get_spotify_headers
 from app.services.tracks_service import fetch_listened_tracks
 from app.services.user_auth_service import get_current_user_id
-from app.services.utils import config
+from app.services.utils import config, time_it_async
 
 
 async def get_playlists_from_spotify(offset: int, limit: int, db_session: Session) -> dict:
@@ -121,7 +122,7 @@ async def get_all_playlists(db_session: Session) -> dict:
     return {"playlists": playlists}
 
 
-async def filter_new_tracks(db_session: Session, playlists: dict):
+async def filter_new_tracks(db_session: Session, playlists: dict) -> list[Track]:
     """
     Filter out tracks that are already included in existing playlists.
 
@@ -273,7 +274,7 @@ async def add_tracks_to_playlist(
 
 async def cache_playlist_tracks(playlists: list[dict], db_session: Session) -> dict[str, set]:
     """
-    Fetch all tracks for each playlist and store them in a cache dictionary.
+    Fetch all tracks for each playlist and store them in a cache (Redis).
 
     Args:
         playlists (list[dict]): List of dictonaries containing the playlists details.
@@ -284,6 +285,10 @@ async def cache_playlist_tracks(playlists: list[dict], db_session: Session) -> d
     """
     playlist_tracks_cache = {}
     spotify_headers = await get_spotify_headers(db_session)
+    redis_client = Redis(
+        url=config["REDIS_URL"],
+        token=config["REDIS_TOKEN"],
+    )
 
     async def fetch_tracks(playlist: dict):
         """
@@ -300,12 +305,21 @@ async def cache_playlist_tracks(playlists: list[dict], db_session: Session) -> d
             httpx.HTTPStatusError: If the request to the Spotify API fails.
         """
         spotify_id = playlist["uri"].split(":")[-1]
+        cache_key = f"playlist:{spotify_id}:tracks"
+        cached_tracks = await redis_client.get(cache_key)
+        if cached_tracks:
+            playlist_tracks_cache[spotify_id] = set(cached_tracks.split(","))
+            return
+
         async with httpx.AsyncClient() as client:
             url = f"{config['SPOTIFY_API_URL']}/playlists/{spotify_id}"
             response = await client.get(url, headers=spotify_headers)
             response.raise_for_status()
             playlist_details = response.json()["tracks"]["items"]
-            playlist_tracks_cache[spotify_id] = {item["track"]["name"] for item in playlist_details}
+            tracks = {item["track"]["name"] for item in playlist_details}
+            await redis_client.set(cache_key, ",".join(tracks), ex=3600)
+            playlist_tracks_cache[spotify_id] = tracks
 
     await asyncio.gather(*[fetch_tracks(playlist) for playlist in playlists])
+    await redis_client.close()
     return playlist_tracks_cache
