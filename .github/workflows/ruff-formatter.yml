@@ -7,6 +7,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Create virtual environment
+        run: |
+          python -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip
+
+      - name: Install ruff
+        run: |
+          . venv/bin/activate
+          pip install ruff
+
       - name: Checkout code
         uses: actions/checkout@v3
 
