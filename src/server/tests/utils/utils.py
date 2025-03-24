@@ -10,16 +10,10 @@ def get_model_attributes(instance):
     return {key: value for key, value in instance.__dict__.items() if not key.startswith("_")}
 
 
-def extract_tokens(header: str) -> tuple[str, str | None]:
+def extract_access_token(header: str) -> tuple[str, str | None]:
     access_match = re.search(r'access_token="Bearer ([^"]+)"', header)
-    refresh_match = re.search(r"refresh_token=([^;]+)", header)
     access_token = access_match.group(1) if access_match else None
-    refresh_token = refresh_match.group(1) if refresh_match else None
-    return access_token, refresh_token
-
-
-def are_tokens_valid(access_token: str | None, refresh_token: str | None) -> bool:
-    return access_token is not None and refresh_token is not None
+    return access_token
 
 
 async def add_test_user(db_session: AsyncSession):

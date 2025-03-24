@@ -2,12 +2,15 @@ import pytest
 from app.db.models import User
 from fastapi import status
 from sqlalchemy import select
-from tests.utils.utils import are_tokens_valid, extract_tokens
+from tests.utils.utils import extract_access_token
 
 from ..conftest import db_session, test_client
+
+
 from ..fixtures.routers.user_auth_router_fixtures import (
     mock_config_env as user_auth_router_fixtures,
 )
+
 from ..fixtures.services.user_auth_service_fixtures import (
     mock_config_env as user_auth_service_fixtures,
 )
@@ -102,7 +105,8 @@ async def test_login_user_success_with_tokens_in_cookies(test_client, db_session
     response_data = response.json()
     assert response_data["message"] == "Login successful"
     headers = str(response.headers)
-    assert are_tokens_valid(*extract_tokens(headers)) is True
+    access_token = extract_access_token(headers)
+    assert access_token is not None
 
 
 @pytest.mark.asyncio
@@ -116,4 +120,5 @@ async def test_login_user_success_after_multiple_attempts(test_client, db_sessio
         response_data = response.json()
         assert response_data["message"] == "Login successful"
         headers = str(response.headers)
-        assert are_tokens_valid(*extract_tokens(headers)) is True
+        access_token = extract_access_token(headers)
+        assert access_token is not None

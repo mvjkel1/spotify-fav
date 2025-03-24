@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from time import time
 
 import httpx
 from app.db.models import SpotifyAccessToken
@@ -44,7 +43,6 @@ async def save_spotify_token(
     await db_session.commit()
 
 
-# TODO: REFACTOR THAT, DOES TOO MUCH
 async def get_spotify_token(user_id: int, db_session: AsyncSession) -> dict[str, str]:
     """
     Retrieve the current Spotify token if it is still valid, or refresh it.

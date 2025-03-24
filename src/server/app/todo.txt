@@ -1,0 +1,6 @@
+fix:
+- when JWT token expires, the polling won't work
+
+todo:
+- make JWT token expire time as date not float
+- csfr token (?)

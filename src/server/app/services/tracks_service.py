@@ -54,13 +54,13 @@ async def poll_playback_state(user_id: int, db_session: AsyncSession) -> None:
         db_session (AsyncSession): The SQLAlchemy async session used to query the database.
     """
     while await is_user_polling(user_id, db_session):
-        playback_state = await get_playback_state(user_id, db_session)
-        if playback_state:
-            try:
+        try:
+            playback_state = await get_playback_state(user_id, db_session)
+            if playback_state:
                 await handle_playing_track(playback_state, user_id, db_session)
-            except HTTPException as exc:
-                await update_polling_status(db_session, enable=False)
-                break
+        except HTTPException as exc:
+            await update_polling_status(db_session, enable=False)
+            break
         await asyncio.sleep(5)
 
 
@@ -428,7 +428,7 @@ async def start_polling_tracks(
     if user.is_polling:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "The polling session for current user has been already started.",
+            "The polling session for current user has already started.",
         )
     await update_polling_status(db_session, enable=True, user_id=user_id)
     background_tasks.add_task(poll_playback_state, user_id, db_session)

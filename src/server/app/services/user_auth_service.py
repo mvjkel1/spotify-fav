@@ -3,9 +3,9 @@ from typing import Annotated
 
 from app.db.database import async_get_db
 from app.db.models import User
-from app.db.schemas import TokenData, UserRegister, UserSchema
+from app.db.schemas import TokenData, TokenSchema, UserRegister, UserSchema
 from app.services.utils import config
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from jwt.exceptions import InvalidTokenError
@@ -13,7 +13,7 @@ from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-OAUTH2_SCHEME = OAuth2PasswordBearer(tokenUrl="/user-auth/token")
+OAUTH2_SCHEME = OAuth2PasswordBearer(tokenUrl="user-auth/token")
 PWD_CONTEXT = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
@@ -148,12 +148,21 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 async def verify_token(token: str):
+    """
+    Verifies and decodes a JWT token.
+
+    Args:
+        token (str): The JWT token to be verified.
+
+    Returns:
+        TokenData: An instance containing the email extracted from the token if valid, None otherwise.
+    """
     try:
         payload = jwt.decode(token, config["SECRET_KEY"], algorithms=config["ALGORITHM"])
         email = payload.get("sub")
         if email is None:
             return None
-        return TokenData(email)
+        return TokenData(email=email)
     except JWTError:
         return None
 
@@ -166,7 +175,7 @@ async def get_current_user(
     Retrieve the current user based on the provided JWT token.
 
     Args:
-        token (str): A JWT token extracted from the Authorization header using OAuth2 scheme.
+        jwt_token (str): A JWT token extracted from the Authorization header using OAuth2 scheme.
         db_session (Session): The database session for querying the user.
 
     Returns:
@@ -188,7 +197,9 @@ async def get_current_user(
     except InvalidTokenError:
         raise credentials_exception
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="JWT token has expired")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="JWT token has expired"
+        )
     user = await get_user_by_email(db_session, user_email)
     if user is None:
         raise credentials_exception
@@ -237,7 +248,7 @@ async def get_current_user_db(user_id: int, db_session: AsyncSession) -> User:
     return user
 
 
-async def handle_refresh_token(refresh_token: str | None, db_session: AsyncSession) -> dict:
+async def handle_refresh_access_token(refresh_token: str | None) -> dict:
     """
     Handles the refresh token process by verifying its validity and generating a new access token.
 
@@ -254,8 +265,8 @@ async def handle_refresh_token(refresh_token: str | None, db_session: AsyncSessi
     """
     if not refresh_token:
         raise HTTPException("Refresh token does not exist.")
-    user_data = await verify_token(refresh_token, db_session)
+    user_data = await verify_token(refresh_token)
     if not user_data:
         raise Exception("Cannot verify the refresh token.")
-    new_access_token = await create_access_token(data={"sub": user_data.username_or_email})
+    new_access_token = create_access_token(data={"sub": user_data.email})
     return {"access_token": new_access_token, "token_type": "bearer"}

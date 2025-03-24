@@ -43,7 +43,7 @@ This project leverages the following key technologies:
 - PostgresSQL database
 - Redis database
 
-## Getting Started [ ! VERY IN PROGRESS ! ]
+## Getting Started
 
 - Clone the repository
 - Create and activate the Python virtual environment

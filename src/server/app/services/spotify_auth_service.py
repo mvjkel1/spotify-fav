@@ -4,7 +4,6 @@ import urllib.parse
 import httpx
 from app.services.spotify_token_manager import (
     get_spotify_headers,
-    get_spotify_token_from_db,
     save_spotify_token,
 )
 from app.services.user_auth_service import get_current_user

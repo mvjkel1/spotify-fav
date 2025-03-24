@@ -69,38 +69,6 @@ class User(Base):
     )
 
 
-class UserAccessToken(Base):
-    """
-    Represents a general access token for a user.
-
-    Attributes:
-        id (int): The primary key for the access token.
-        access_token (str): The token used to authenticate API requests.
-        refresh_token (str): The token used to refresh the access token.
-        created_at (datetime): The timestamp when the token was created.
-        updated_at (datetime): The timestamp when the token was last updated.
-        user_id (int): The foreign key linking the token to a user.
-        user (User): The relationship linking the token to the associated user.
-    """
-
-    __tablename__ = "user_access_tokens"
-    id = Column(Integer, primary_key=True)
-    access_token = Column(String, unique=True, nullable=False)
-    refresh_token = Column(String, unique=True, nullable=False)
-    created_at = Column(
-        type_=TIMESTAMP(timezone=True), default=datetime.now(tz=timezone.utc), nullable=False
-    )
-    expires_at = Column(type_=TIMESTAMP(timezone=True), nullable=False)
-    updated_at = Column(
-        type_=TIMESTAMP(timezone=True),
-        default=datetime.now(tz=timezone.utc),
-        onupdate=datetime.now(tz=timezone.utc),
-        nullable=False,
-    )
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    is_active = Column(Boolean, default=True)
-
-
 class SpotifyAccessToken(Base):
     """
     Represents an access token for Spotify's API, used by the user for authentication.
