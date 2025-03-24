@@ -6,7 +6,7 @@ from app.db.database import Base
 playlist_track_association_table = Table(
     "playlist_track",
     Base.metadata,
-    Column("playlist_id", Integer, ForeignKey("playlists.id")),
+    Column("playlist_id", Integer, ForeignKey("playlists.id", ondelete="CASCADE")),
     Column("track_id", Integer, ForeignKey("tracks.id")),
 )
 
