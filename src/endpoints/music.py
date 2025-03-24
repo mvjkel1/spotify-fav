@@ -91,8 +91,6 @@ async def poll_playback_state(access_token: str, db_session: Session) -> None:
             print(f"Unexpected error: {error}")
         await asyncio.sleep(1)
 
-        except HTTPException as e:
-            print(f"Error fetching playback state: {e.detail}")
 
 async def handle_playing_track(
     state: dict, db_session: Session, access_token: str
