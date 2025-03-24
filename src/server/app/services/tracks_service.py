@@ -7,7 +7,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 
-async def get_current_track(db_session: Session) -> dict:
+async def get_current_track(db_session: Session) -> dict[str, str]:
     """
     Retrieve the current track the user is listening to on Spotify.
 
@@ -15,7 +15,7 @@ async def get_current_track(db_session: Session) -> dict:
         db_session (Session): SQLAlchemy session to get Spotify headers.
 
     Returns:
-        dict: A dictionary containing information about the current track.
+        dict[str, str]: A dictionary containing information about the current track.
 
     Raises:
         HTTPException: If the request to Spotify fails or returns a non-200 status code.
@@ -45,7 +45,7 @@ async def poll_playback_state(db_session: Session) -> None:
         await asyncio.sleep(1)
 
 
-async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dict:
+async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dict[str, str]:
     """
     Retrieve the user's recently played tracks from Spotify.
 
@@ -54,7 +54,7 @@ async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dic
         limit (int, optional): The number of recent tracks to retrieve. Defaults to 1.
 
     Returns:
-        dict: A dictionary containing information about the recently played track(s).
+        dict[str, str]: A dictionary containing information about the recently played track(s).
 
     Raises:
         HTTPException: If the request to Spotify fails or returns a non-200 status code.
@@ -71,7 +71,7 @@ async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dic
         )
 
 
-async def get_playback_state(db_session: Session) -> dict:
+async def get_playback_state(db_session: Session) -> dict[str, str]:
     """
     Retrieve the user's current playback state from Spotify.
 
@@ -79,7 +79,7 @@ async def get_playback_state(db_session: Session) -> dict:
         db_session (Session): SQLAlchemy session to get Spotify headers.
 
     Returns:
-        dict: A dictionary containing the current playback state information.
+        dict[str, str]: A dictionary containing the current playback state information.
 
     Raises:
         HTTPException: If the request to Spotify fails or returns a non-200 status code.
@@ -113,7 +113,7 @@ async def handle_playing_track(state: dict, db_session: Session) -> None:
         )
 
 
-def extract_track_data(state: dict) -> tuple:
+def extract_track_data(state: dict) -> tuple[str, str, str, str]:
     """
     Extract the necessary track data from the playback state.
 
@@ -121,7 +121,7 @@ def extract_track_data(state: dict) -> tuple:
         state (dict): The current playback state returned from Spotify.
 
     Returns:
-        tuple: A tuple containing the track's progress, duration, title, and Spotify ID.
+        tuple[str, str, str, str]: A tuple containing the track's progress, duration, title, and Spotify ID.
 
     Raises:
         HTTPException: If any required data is missing.
@@ -137,7 +137,7 @@ def extract_track_data(state: dict) -> tuple:
     return progress, item["duration_ms"], item["name"], item["id"]
 
 
-def check_track_progress(progress: int, duration: int) -> tuple:
+def check_track_progress(progress: int, duration: int) -> tuple[bool, bool]:
     """
     Check if certain time thresholds in the track's progress are met.
 
@@ -146,9 +146,9 @@ def check_track_progress(progress: int, duration: int) -> tuple:
         duration (int): The total duration of the track in milliseconds.
 
     Returns:
-        tuple: A tuple containing two boolean values:
-                - True if 10 seconds or more have passed,
-                - True if 10 seconds or less remain in the track.
+        tuple[bool, bool]: A tuple containing two boolean values:
+                            - True if 10 seconds or more have passed,
+                            - True if 10 seconds or less remain in the track.
     """
     ten_seconds_passed = progress >= 10000
     ten_seconds_left = (duration - progress) <= 10000
