@@ -2,7 +2,7 @@ import base64
 import urllib.parse
 
 import httpx
-from app.token_manager import save_token
+from app.token_manager import parse_token_response, save_token
 from app.utils import generate_random_string, get_spotify_headers
 from dotenv import dotenv_values, find_dotenv
 from fastapi import HTTPException, status
@@ -86,44 +86,35 @@ async def handle_spotify_callback(code: str, db_session: Session) -> RedirectRes
     """
     if not code:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Authorization code not found in request",
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Authorization code missing"
         )
-
+    auth_header = base64.b64encode(
+        f"{config['CLIENT_ID']}:{config['CLIENT_SECRET']}".encode()
+    ).decode()
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": f"Basic {auth_header}",
+    }
+    form_data = {
+        "code": code,
+        "redirect_uri": config["REDIRECT_URI"],
+        "grant_type": "authorization_code",
+    }
     try:
-        auth_header = base64.b64encode(
-            f"{config['CLIENT_ID']}:{config['CLIENT_SECRET']}".encode()
-        ).decode()
-        token_url = config["SPOTIFY_TOKEN_URL"]
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Authorization": f"Basic {auth_header}",
-        }
-        form_data = {
-            "code": code,
-            "redirect_uri": config["REDIRECT_URI"],
-            "grant_type": "authorization_code",
-        }
         async with httpx.AsyncClient() as client:
-            response = await client.post(token_url, data=form_data, headers=headers)
+            response = await client.post(config["SPOTIFY_TOKEN_URL"], data=form_data, headers=headers)
         response.raise_for_status()
-        response_json = response.json()
-        access_token = response_json.get("access_token")
-        refresh_token = response_json.get("refresh_token")
-        expires_in = response_json.get("expires_in")
+        tokens = parse_token_response(response)
+        access_token, refresh_token, expires_in = tokens.get("access_token"), tokens.get("refresh_token"), tokens.get("expires_in")
         if not access_token or not refresh_token:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve tokens from Spotify API",
+                detail="Failed to retrieve tokens from Spotify"
             )
         save_token(access_token, refresh_token, expires_in, db_session)
         return RedirectResponse(url=config["CALLBACK_REDIRECT_URL"])
-    except httpx.HTTPStatusError as exc:
+    except (httpx.HTTPStatusError, httpx.RequestError) as exc:
+        status_code = getattr(exc.response, "status_code", status.HTTP_502_BAD_GATEWAY)
         raise HTTPException(
-            status_code=exc.response.status_code, detail=f"HTTP error occurred: {exc}"
-        ) from exc
-    except httpx.RequestError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Error while requesting from Spotify: {exc}",
+            status_code=status_code, detail=f"Error occurred: {exc}"
         ) from exc
