@@ -70,9 +70,7 @@ async def handle_playing_track(state: dict, db_session: Session) -> dict:
             await create_track_entry(track_title, track_id, db_session)
 
 
-async def create_track_entry(
-    track_title: str, track_id: int, db_session: Session
-) -> None:
+async def create_track_entry(track_title: str, track_id: int, db_session: Session) -> None:
     track = Track(title=track_title, spotify_id=track_id, listened_count=0)
     db_session.add(track)
     db_session.commit()

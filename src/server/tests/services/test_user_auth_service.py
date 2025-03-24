@@ -31,9 +31,7 @@ from ..fixtures.user_auth_fixtures import (
 async def test_get_current_user_success(
     db_session, mock_get_spotify_headers, mock_async_client_get, expected_output
 ):
-    mock_async_client_get.return_value = httpx.Response(
-        status_code=200, json=USER_DATA_EXAMPLE
-    )
+    mock_async_client_get.return_value = httpx.Response(status_code=200, json=USER_DATA_EXAMPLE)
     result = await get_current_user(db_session)
     assert result == expected_output
 
@@ -97,9 +95,7 @@ async def test_handle_spotify_callback_success(
 
 
 @pytest.mark.asyncio
-async def test_handle_spotify_callback_invalid_token_response(
-    mock_async_client_post, db_session
-):
+async def test_handle_spotify_callback_invalid_token_response(mock_async_client_post, db_session):
     mock_request = httpx.Request("POST", "https://accounts.spotify.com/api/token")
     mock_response_data = {}
     mock_async_client_post.return_value = httpx.Response(
@@ -112,9 +108,7 @@ async def test_handle_spotify_callback_invalid_token_response(
 
 
 @pytest.mark.asyncio
-async def test_handle_spotify_callback_spotify_http_error(
-    mock_async_client_post, db_session
-):
+async def test_handle_spotify_callback_spotify_http_error(mock_async_client_post, db_session):
     mock_async_client_post.side_effect = httpx.HTTPStatusError(
         message="Unauthorized",
         request=None,
@@ -127,12 +121,8 @@ async def test_handle_spotify_callback_spotify_http_error(
 
 
 @pytest.mark.asyncio
-async def test_handle_spotify_callback_spotify_request_error(
-    mock_async_client_post, db_session
-):
-    mock_async_client_post.side_effect = httpx.RequestError(
-        "Request failed", request=None
-    )
+async def test_handle_spotify_callback_spotify_request_error(mock_async_client_post, db_session):
+    mock_async_client_post.side_effect = httpx.RequestError("Request failed", request=None)
     with pytest.raises(HTTPException) as exc:
         await handle_spotify_callback("valid_code", db_session)
     assert exc.value.status_code == status.HTTP_502_BAD_GATEWAY

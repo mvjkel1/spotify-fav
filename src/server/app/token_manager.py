@@ -18,9 +18,7 @@ class RefreshTokenError(Exception):
     """Custom exception for refresh token-related errors."""
 
 
-def save_token(
-    access_token: str, refresh_token: str, expires_in: int, db_session: Session
-) -> None:
+def save_token(access_token: str, refresh_token: str, expires_in: int, db_session: Session) -> None:
     """
     Save or update the access and refresh tokens in the database.
 

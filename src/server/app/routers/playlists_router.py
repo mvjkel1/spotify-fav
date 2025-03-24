@@ -1,10 +1,12 @@
 import httpx
 from app.db.database import get_db
-from app.services.playlists_service import (add_tracks_to_playlist,
-                                            create_playlist_in_db,
-                                            create_playlist_on_spotify,
-                                            get_my_playlists_from_spotify,
-                                            get_tracks_for_playlist)
+from app.services.playlists_service import (
+    add_tracks_to_playlist,
+    create_playlist_in_db,
+    create_playlist_on_spotify,
+    get_my_playlists_from_spotify,
+    get_tracks_for_playlist,
+)
 from app.services.user_auth_service import get_current_user_id
 from app.utils import get_spotify_headers
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -35,9 +37,7 @@ async def get_my_playlists(
 
 
 @router.post("/playlists")
-async def create_playlist(
-    playlist_name: str, db_session: Session = Depends(get_db)
-) -> dict:
+async def create_playlist(playlist_name: str, db_session: Session = Depends(get_db)) -> dict:
     """
     Create a new playlist in the local database and on Spotify.
 
@@ -56,15 +56,11 @@ async def create_playlist(
         tracks_db = get_tracks_for_playlist(db_session)
         playlist = create_playlist_in_db(playlist_name, tracks_db, db_session)
         spotify_headers = await get_spotify_headers(db_session)
-        playlist_id = await create_playlist_on_spotify(
-            user_id, playlist.name, spotify_headers
-        )
+        playlist_id = await create_playlist_on_spotify(user_id, playlist.name, spotify_headers)
         await add_tracks_to_playlist(
             playlist_id, [track.spotify_id for track in tracks_db], spotify_headers
         )
         return {"message": "Playlist created successfully."}
 
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(
-            status_code=exc.response.status_code, detail=exc.response.text
-        ) from exc
+        raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text) from exc
