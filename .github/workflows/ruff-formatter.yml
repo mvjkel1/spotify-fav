@@ -18,10 +18,9 @@ jobs:
 
       - name: Install ruff
         run: |
-          . venv/bin/activate
           pip install ruff
 
       - name: Run format.sh script
         run: |
-          chmod +x src/server/format.sh
-          ./src/server/format.sh
+          ruff format src/server/app --line-length 100
+          ruff format src/server/tests --line-length 100
