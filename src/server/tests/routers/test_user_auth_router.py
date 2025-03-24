@@ -1,8 +1,7 @@
 import pytest
+from app.db.models import User
 from fastapi import status
 from sqlalchemy import select
-
-from app.db.models import User
 from tests.utils.utils import are_tokens_valid, extract_tokens
 
 from ..conftest import db_session, test_client

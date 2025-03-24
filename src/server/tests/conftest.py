@@ -1,13 +1,13 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+
 import pytest
-from httpx import AsyncClient
-from httpx import ASGITransport
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from app.db.database import Base, async_get_db
 from app.main import app
 from app.services.user_auth_service import get_current_active_user
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from tests.fixtures.constants import USER_SCHEMA_EXAMPLE
 

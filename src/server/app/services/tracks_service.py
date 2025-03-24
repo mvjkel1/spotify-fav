@@ -1,15 +1,13 @@
 import asyncio
 
 import httpx
-from sqlalchemy import select, update
-
 from app.db.models import Track, User, user_track_association_table
 from app.services.spotify_token_manager import get_spotify_headers
+from app.services.user_auth_service import get_current_user_db
 from app.services.utils import config
 from fastapi import BackgroundTasks, HTTPException, status
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio.session import AsyncSession
-
-from app.services.user_auth_service import get_current_user_db
 
 
 async def get_current_track(user_id: int, db_session: AsyncSession) -> dict:

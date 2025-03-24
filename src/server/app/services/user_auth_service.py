@@ -1,19 +1,17 @@
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
-from fastapi import Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.database import async_get_db
 from app.db.models import User
-from passlib.context import CryptContext
-from fastapi import status
-from app.db.schemas import TokenData, UserRegister
-from datetime import datetime, timezone, timedelta
+from app.db.schemas import TokenData, UserRegister, UserSchema
 from app.services.utils import config
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from jwt.exceptions import InvalidTokenError
+from passlib.context import CryptContext
 from sqlalchemy import select
-from app.db.database import async_get_db
-from app.db.schemas import UserSchema
+from sqlalchemy.ext.asyncio import AsyncSession
 
 OAUTH2_SCHEME = OAuth2PasswordBearer(tokenUrl="/user-auth/token")
 PWD_CONTEXT = CryptContext(schemes=["argon2"], deprecated="auto")

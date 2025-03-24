@@ -2,18 +2,17 @@ import base64
 import urllib.parse
 
 import httpx
-from fastapi import HTTPException, status
-from fastapi.responses import RedirectResponse
-from jose import jwt
-from sqlalchemy.ext.asyncio.session import AsyncSession
-
 from app.services.spotify_token_manager import (
     get_spotify_headers,
     get_spotify_token_from_db,
     save_spotify_token,
 )
-from app.services.utils import config
 from app.services.user_auth_service import get_current_user
+from app.services.utils import config
+from fastapi import HTTPException, status
+from fastapi.responses import RedirectResponse
+from jose import jwt
+from sqlalchemy.ext.asyncio.session import AsyncSession
 
 
 async def get_spotify_user(user_id: int, db_session: AsyncSession) -> dict:

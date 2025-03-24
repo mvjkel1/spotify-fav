@@ -1,13 +1,12 @@
 from contextlib import asynccontextmanager
 
 import app.routers.playlists_router as playlists_router
+import app.routers.spotify_auth_router as spotify_auth_router
 import app.routers.tracks_router as tracks_router
 import app.routers.user_auth_router as user_auth_router
-import app.routers.spotify_auth_router as spotify_auth_router
 from app.db.database import async_get_db
-from fastapi import FastAPI
-
 from app.services.tracks_service import update_polling_status
+from fastapi import FastAPI
 
 
 @asynccontextmanager
