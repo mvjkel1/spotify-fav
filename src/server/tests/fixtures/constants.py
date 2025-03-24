@@ -33,6 +33,12 @@ ACCESS_TOKEN_EXAMPLE = {
 }
 
 TRACK_DATA_EXAMPLE = (10000, 12000, "Test track", "test_track_id")
+TRACK_DATA_DICT_EXAMPLE = {
+    "track_id": "123",
+    "name": "Test Track",
+    "artist": "Test Artist",
+    "album": "Test Album",
+}
 GET_CURRENT_USER_URL = f"{ENV_CONFIG_EXAMPLE["SPOTIFY_API_URL"]}/me"
 GET_CURRENT_TRACK_URL = f"{ENV_CONFIG_EXAMPLE["SPOTIFY_API_URL"]}/me/player/currently-playing"
 GET_RECENTLY_PLAYED_TRACKS_URL = (
