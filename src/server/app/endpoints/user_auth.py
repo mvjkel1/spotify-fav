@@ -60,7 +60,13 @@ async def get_current_user_id(db_session: Session) -> str:
         str: The current user's Spotify user ID.
     """
     current_user = await get_current_user(db_session=db_session)
-    return current_user.get("id", "")
+    current_user_id = current_user.get("id")
+    if not current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to fetch current user ID",
+        )
+    return current_user_id
 
 
 @router.get("/login")
@@ -126,6 +132,7 @@ async def callback(request: Request, db_session: Session = Depends(get_db)):
         }
         async with httpx.AsyncClient() as client:
             response = await client.post(token_url, data=form_data, headers=headers)
+        response.raise_for_status()
         response_json = response.json()
         access_token = response_json.get("access_token")
         refresh_token = response_json.get("refresh_token")
