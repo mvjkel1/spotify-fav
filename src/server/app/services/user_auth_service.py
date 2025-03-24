@@ -45,7 +45,7 @@ async def get_current_user_id(db_session: Session) -> str:
     Returns:
         str: The current user's Spotify user ID.
     """
-    current_user = await get_current_user(db_session=db_session)
+    current_user = await get_current_user(db_session)
     current_user_id = current_user.get("id")
     if not current_user_id:
         raise HTTPException(

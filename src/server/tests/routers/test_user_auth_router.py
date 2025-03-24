@@ -3,34 +3,12 @@ from unittest.mock import patch
 import httpx
 import pytest
 from fastapi import HTTPException, status
-
-from ..utils.utils import (
-    SPOTIFY_HEADERS_EXAMPLE,
-    USER_DATA_EXAMPLE,
+from ..fixtures.user_auth_fixtures import (
+    mock_async_client_get,
+    mock_get_spotify_headers,
 )
 
-
-@pytest.fixture
-def mock_get_spotify_headers():
-    with patch(
-        "app.services.user_auth_service.get_spotify_headers",
-        return_value=SPOTIFY_HEADERS_EXAMPLE,
-    ) as mock:
-        yield mock
-
-
-@pytest.fixture
-def mock_async_client_get():
-    with patch(
-        "app.services.user_auth_service.httpx.AsyncClient.get",
-    ) as mock:
-        yield mock
-
-
-@pytest.fixture
-def mock_get_current_user():
-    with patch("app.services.user_auth_service.get_current_user") as mock:
-        yield mock
+from ..utils.utils import SPOTIFY_HEADERS_EXAMPLE, USER_DATA_EXAMPLE
 
 
 @pytest.mark.parametrize("expected_output", [USER_DATA_EXAMPLE])
