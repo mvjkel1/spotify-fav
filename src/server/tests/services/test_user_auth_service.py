@@ -1,9 +1,8 @@
-import json
 from unittest.mock import patch
 from fastapi.responses import RedirectResponse
 import httpx
 import pytest
-from fastapi import HTTPException, Response, status
+from fastapi import HTTPException, status
 from ..utils.utils import (
     ACCESS_TOKEN_EXAMPLE,
     USER_DATA_EXAMPLE,
