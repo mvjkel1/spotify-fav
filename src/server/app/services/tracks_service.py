@@ -129,12 +129,12 @@ def extract_track_data(state: dict) -> tuple:
     try:
         progress = state["progress_ms"]
         item = state["item"]
-        return progress, item["duration_ms"], item["name"], item["id"]
     except KeyError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Missing data in playback state.",
         )
+    return progress, item["duration_ms"], item["name"], item["id"]
 
 
 def check_track_progress(progress: int, duration: int) -> tuple:
