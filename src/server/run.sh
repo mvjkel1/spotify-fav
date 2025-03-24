@@ -8,7 +8,7 @@ Usage:
   ./run.sh coverage          - Run tests with coverage
   ./run.sh coverage_report   - Run tests with coverage and generate a report
   ./run.sh coverage_html     - Run tests with coverage and generate an HTML report
-  ./run.sh formatting        - Run black & isort on recently changes files
+  ./run.sh format            - Run black & isort on recently changes files
   ./run.sh help              - Show this help message
 EOF
 }
