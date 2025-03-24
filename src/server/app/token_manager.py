@@ -1,6 +1,7 @@
 from time import time
 
 import httpx
+import status
 from dotenv import dotenv_values, find_dotenv
 from sqlalchemy.orm import Session
 
@@ -18,7 +19,9 @@ class RefreshTokenError(Exception):
     """Custom exception for refresh token-related errors."""
 
 
-def save_token(access_token: str, refresh_token: str, expires_in: int, db_session: Session) -> None:
+def save_token(
+    access_token: str, refresh_token: str, expires_in: int, db_session: Session
+) -> None:
     """
     Save or update the access and refresh tokens in the database.
 
@@ -88,7 +91,9 @@ async def refresh_access_token(db_session: Session) -> dict | None:
     token = get_token(db_session)
 
     if not token or not token["refresh_token"]:
-        raise TokenError("No token to refresh was found, or the refresh token is invalid.")
+        raise TokenError(
+            "No token to refresh was found, or the refresh token is invalid."
+        )
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
@@ -100,7 +105,7 @@ async def refresh_access_token(db_session: Session) -> dict | None:
                     "client_secret": config["CLIENT_SECRET"],
                 },
             )
-            if response.status_code == 200:
+            if response.status_code == status.HTTP_200_OK:
                 token_data = response.json()
                 save_token(
                     token_data["access_token"],
