@@ -70,6 +70,8 @@ CREATE_PLAYLIST_SERVICE_URL_EXAMPLE = f"{ENV_CONFIG_EXAMPLE["SPOTIFY_API_URL"]}/
 
 USER_ID_EXAMPLE = "123"
 
+SPOTIFY_PLAYLIST_ID_EXAMPLE = "1RrQqZz1"
+
 SPOTIFY_USER_ID_EXAMPLE = "114477"
 
 EXAMPLE_TRACK_ID = "25"
@@ -79,6 +81,24 @@ TRACK_EXAMPLE_DB = Track(
     title="Test Track",
     spotify_id="test_id",
 )
+
+TRACKS_LIST_EXAMPLE = [
+    Track(
+        id=11,
+        title="Test Track 1",
+        spotify_id="test_id_1",
+    ),
+    Track(
+        id=12,
+        title="Test Track 2",
+        spotify_id="test_id_2",
+    ),
+    Track(
+        id=13,
+        title="Test Track 3",
+        spotify_id="test_id_3",
+    ),
+]
 
 USER_EXAMPLE_DB = User(id=1, spotify_uid=1, email="user@example.com", hashed_password="P!w!D")
 

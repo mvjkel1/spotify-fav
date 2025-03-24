@@ -16,11 +16,11 @@ SQLITE_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 async_engine = create_async_engine(SQLITE_DATABASE_URL, echo=False, future=True)
 
 TestingAsyncSessionLocal = sessionmaker(
-    async_engine,
-    expire_on_commit=False,
-    autoflush=False,
     autocommit=False,
+    autoflush=False,
+    bind=async_engine,
     class_=AsyncSession,
+    expire_on_commit=False,
 )
 
 
@@ -29,7 +29,7 @@ async def test_lifespan(app: FastAPI):
     yield
 
 
-@pytest_asyncio.fixture
+@pytest.fixture(scope="function")
 async def db_session():
     connection = await async_engine.connect()
     transaction = await connection.begin()
@@ -43,13 +43,13 @@ async def db_session():
     await connection.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def mock_current_user():
     """Fixture to mock get_current_active_user"""
     return USER_SCHEMA_EXAMPLE
 
 
-@pytest_asyncio.fixture
+@pytest.fixture(scope="function")
 async def test_client(db_session, mock_current_user):
     """Create a test client that uses the override_get_db fixture to return a session."""
 
