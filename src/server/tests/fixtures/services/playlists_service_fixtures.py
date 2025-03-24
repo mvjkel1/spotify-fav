@@ -2,9 +2,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.db.models import Track
+from app.db.models import Track, User
 
-from ..constants import ENV_CONFIG_EXAMPLE, SPOTIFY_HEADERS_EXAMPLE
+from ..constants import ENV_CONFIG_EXAMPLE, SPOTIFY_HEADERS_EXAMPLE, SPOTIFY_USER_ID_EXAMPLE
 
 
 @pytest.fixture(scope="function")
@@ -33,8 +33,32 @@ def mock_async_client_post():
 
 
 @pytest.fixture(scope="function")
-def mock_get_current_user_id():
-    with patch("app.services.playlists_service.get_current_user_id", return_value=1) as mock:
+def mock_get_current_user_db():
+    with patch(
+        "app.services.playlists_service.get_current_user_db",
+        return_value=User(id=1, spotify_uid=1, email="user@example.com", hashed_password="P!w!D"),
+    ) as mock:
+        yield mock
+
+
+@pytest.fixture(scope="function")
+def mock_get_current_spotify_user_id():
+    with patch(
+        "app.services.playlists_service.get_current_spotify_user_id",
+        return_value=SPOTIFY_USER_ID_EXAMPLE,
+    ) as mock:
+        yield mock
+
+
+@pytest.fixture(scope="function")
+def mock_create_playlist():
+    with patch("app.services.playlists_service.create_playlist") as mock:
+        yield mock
+
+
+@pytest.fixture(scope="function")
+def mock_filter_new_tracks():
+    with patch("app.services.playlists_service.filter_new_tracks") as mock:
         yield mock
 
 
