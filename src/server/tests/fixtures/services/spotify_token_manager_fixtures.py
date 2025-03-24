@@ -41,7 +41,7 @@ def mock_async_client_post():
 
 
 @pytest.fixture(scope="function")
-def mock_get_token():
+def mock_get_spotify_token():
     with patch("app.services.spotify_token_manager.get_spotify_token") as mock:
         yield mock
 

@@ -19,7 +19,7 @@ from ..fixtures.services.spotify_token_manager_fixtures import (
     mock_spotify_expired_token,
     mock_async_client_post,
     mock_config_env,
-    mock_get_token,
+    mock_get_spotify_token,
     mock_refresh_access_token,
     mock_spotify_valid_token,
 )
@@ -97,7 +97,13 @@ def test_is_spotify_token_expired(request, token_fixture, expected_expired):
             "new_refresh",
             None,
         ),
-        # (None, HTTPException("Refresh failed"), None, None, HTTPException),
+        (
+            None,
+            HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh failed"),
+            None,
+            None,
+            HTTPException,
+        ),
     ],
 )
 async def test_handle_spotify_token_refresh(
@@ -113,9 +119,9 @@ async def test_handle_spotify_token_refresh(
     mock_refresh_access_token.side_effect = side_effect
     if expected_exception:
         with pytest.raises(HTTPException) as excinfo:
-            await handle_spotify_token_refresh("refresh_token", db_session)
+            await handle_spotify_token_refresh("refresh_token", user_id=1, db_session=db_session)
         assert excinfo.value.status_code == status.HTTP_401_UNAUTHORIZED
-        assert excinfo.value.detail == "Token refresh failed: Refresh failed"
+        assert excinfo.value.detail == "Spotify token refresh failed: 401: Refresh failed"
     else:
         new_token = await handle_spotify_token_refresh(
             "refresh_token", user_id=1, db_session=db_session
@@ -174,8 +180,8 @@ async def test_refresh_spotify_access_token(
 
 
 @pytest.mark.asyncio
-async def test_get_spotify_headers(mock_get_token, db_session):
-    mock_get_token.return_value = {
+async def test_get_spotify_headers(mock_get_spotify_token, db_session):
+    mock_get_spotify_token.return_value = {
         "access_token": "valid_access",
         "refresh_token": "refresh_token",
         "expires_at": time() + 3600,
