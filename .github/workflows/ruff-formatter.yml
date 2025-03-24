@@ -12,5 +12,5 @@ jobs:
 
       - name: Run format.sh script
         run: |
-          chmod +x server/format.sh  # Make sure the script is executable
-          ./server/format.sh
+          chmod +x src/server/format.sh
+          ./src/server/format.sh
