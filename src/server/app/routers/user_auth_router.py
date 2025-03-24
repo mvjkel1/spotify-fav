@@ -1,9 +1,9 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio.session import AsyncSession
 from datetime import timedelta
-from app.db.database import get_db
+from app.db.database import async_get_db
 from app.services.user_auth_service import (
     authenticate_user,
     create_access_token,
@@ -17,14 +17,14 @@ router = APIRouter(tags=["user_auth"], prefix="/user_auth")
 
 
 @router.post("/register", status_code=201)
-async def register_user(user: UserRegister, db_session: Session = Depends(get_db)):
+async def register_user(user: UserRegister, db_session: AsyncSession = Depends(async_get_db)):
     """
     Handles user registration by calling the `handle_user_register` function. If the registration is successful,
     a new user is created in the database.
 
     Args:
         user (UserRegister): The user registration data, including email and password.
-        db_session (Session, optional): The database session, injected by FastAPI.
+        db_session (AsyncSession): The database session, injected by FastAPI.
 
     Returns:
         dict: A dictionary containing a success message and the email of the newly registered user.
@@ -36,7 +36,7 @@ async def register_user(user: UserRegister, db_session: Session = Depends(get_db
 async def generate_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     response: Response,
-    db_session: Session = Depends(get_db),
+    db_session: AsyncSession = Depends(async_get_db),
 ) -> TokenSchema:
     """
     Generate an access token for the user.
@@ -44,7 +44,7 @@ async def generate_access_token(
     Args:
         form_data (OAuth2PasswordRequestForm): The user's username and password provided in the form.
         response (Response): The response object, used to set the access token as a cookie.
-        db_session (Session): The SQLAlchemy session used to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy session used to interact with the database.
 
     Raises:
         HTTPException: If the user provides an incorrect username or password, an HTTPException with status 401 is raised.
@@ -52,7 +52,7 @@ async def generate_access_token(
     Returns:
         TokenSchema: A schema containing the access token and its type ("bearer").
     """
-    user = authenticate_user(db_session, form_data.username, form_data.password)
+    user = await authenticate_user(db_session, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=401,
@@ -75,7 +75,7 @@ async def generate_access_token(
 async def login_user(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     response: Response,
-    db_session: Session = Depends(get_db),
+    db_session: AsyncSession = Depends(async_get_db),
 ):
     """
     Log in the user by generating an access token.
@@ -83,7 +83,7 @@ async def login_user(
     Args:
         form_data (OAuth2PasswordRequestForm): The user's username and password provided in the form.
         response (Response): The response object, used to set the access token as a cookie.
-        db_session (Session): The SQLAlchemy session used to interact with the database.
+        db_session (AsyncSession): The SQLAlchemy session used to interact with the database.
 
     Returns:
         dict: A dictionary with a message indicating the login was successful.

@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    TIMESTAMP,
     Boolean,
     Column,
-    DateTime,
     Float,
     ForeignKey,
     Integer,
@@ -61,7 +61,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     is_polling = Column(Boolean, default=False, nullable=True)
     is_active = Column(Boolean, default=True)
-    last_login = Column(DateTime, default=None, nullable=True)
+    last_login = Column(type_=TIMESTAMP(timezone=True), default=None, nullable=True)
     tracks = relationship("Track", secondary=user_track_association_table, back_populates="users")
     playlists = relationship("Playlist", back_populates="user", cascade="all, delete")
     spotify_access_token = relationship(
@@ -87,10 +87,12 @@ class UserAccessToken(Base):
     id = Column(Integer, primary_key=True)
     access_token = Column(String, unique=True, nullable=False)
     refresh_token = Column(String, unique=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.now(tz=timezone.utc), nullable=False)
-    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(
+        type_=TIMESTAMP(timezone=True), default=datetime.now(tz=timezone.utc), nullable=False
+    )
+    expires_at = Column(type_=TIMESTAMP(timezone=True), nullable=False)
     updated_at = Column(
-        DateTime,
+        type_=TIMESTAMP(timezone=True),
         default=datetime.now(tz=timezone.utc),
         onupdate=datetime.now(tz=timezone.utc),
         nullable=False,
@@ -118,11 +120,12 @@ class SpotifyAccessToken(Base):
     id = Column(Integer, primary_key=True)
     access_token = Column(String, unique=True, nullable=False)
     refresh_token = Column(String, unique=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.now(tz=timezone.utc), nullable=False)
+    created_at = Column(
+        type_=TIMESTAMP(timezone=True), default=datetime.now(tz=timezone.utc), nullable=False
+    )
     expires_at = Column(Float, nullable=False)
     updated_at = Column(
-        DateTime,
-        default=datetime.now(tz=timezone.utc),
+        type_=TIMESTAMP(timezone=True),
         onupdate=datetime.now(tz=timezone.utc),
     )
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -182,4 +185,4 @@ class Playlist(Base):
     tracks = relationship(
         "Track", secondary=playlist_track_association_table, back_populates="playlists"
     )
-    created_at = Column(DateTime, default=datetime.now(tz=timezone.utc))
+    created_at = Column(type_=TIMESTAMP(timezone=True), default=datetime.now(tz=timezone.utc))

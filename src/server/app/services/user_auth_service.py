@@ -1,7 +1,7 @@
 from typing import Annotated
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
 from passlib.context import CryptContext
@@ -11,8 +11,8 @@ from datetime import datetime, timezone, timedelta
 from app.services.utils import config
 from jose import jwt
 from jwt.exceptions import InvalidTokenError
-
-from app.db.database import get_db
+from sqlalchemy import select
+from app.db.database import async_get_db
 from app.db.schemas import UserSchema
 
 OAUTH2_SCHEME = OAuth2PasswordBearer(tokenUrl="/user_auth/token")
@@ -20,7 +20,7 @@ PWD_CONTEXT = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 async def handle_user_register(
-    db_session: Session,
+    db_session: AsyncSession,
     user: UserRegister,
 ) -> dict:
     """
@@ -36,7 +36,7 @@ async def handle_user_register(
     Returns:
         dict: A dictionary containing a success message and the email of the newly registered user.
     """
-    existing_user = get_user_by_email(db_session, user.email)
+    existing_user = await get_user_by_email(db_session, user.email)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
@@ -44,8 +44,8 @@ async def handle_user_register(
     hashed_password = hash_password(user.password)
     new_user = User(email=user.email, hashed_password=hashed_password)
     db_session.add(new_user)
-    db_session.commit()
-    db_session.refresh(new_user)
+    await db_session.commit()
+    await db_session.refresh(new_user)
     return {"message": "User registered successfully", "email": new_user.email}
 
 
@@ -83,7 +83,7 @@ def hash_password(password: str) -> str:
     return PWD_CONTEXT.hash(password)
 
 
-def get_user_by_email(db_session: Session, email: str) -> User | None:
+async def get_user_by_email(db_session: AsyncSession, email: str) -> User | None:
     """
     Retrieves a user from the database by their email address.
 
@@ -94,11 +94,12 @@ def get_user_by_email(db_session: Session, email: str) -> User | None:
     Returns:
         User or None: The user object if found, otherwise None.
     """
-    return db_session.query(User).filter_by(email=email).first()
+    user = await db_session.execute(select(User).filter_by(email=email))
+    return user.scalar_one_or_none()
 
 
-def authenticate_user(db_session: Session, email: str, password: str):
-    user = get_user_by_email(db_session, email)
+async def authenticate_user(db_session: AsyncSession, email: str, password: str):
+    user = await get_user_by_email(db_session, email)
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
@@ -120,9 +121,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return PWD_CONTEXT.verify(plain_password, hashed_password)
 
 
-def get_current_user(
+async def get_current_user(
     jwt_token: Annotated[str, Depends(OAUTH2_SCHEME)],
-    db_session: Annotated[Session, Depends(get_db)],
+    db_session: Annotated[AsyncSession, Depends(async_get_db)],
 ):
     """
     Retrieve the current user based on the provided JWT token.
@@ -149,7 +150,9 @@ def get_current_user(
             raise credentials_exception
     except InvalidTokenError:
         raise credentials_exception
-    user = get_user_by_email(db_session, user_email)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="JWT token has expired")
+    user = await get_user_by_email(db_session, user_email)
     if user is None:
         raise credentials_exception
 
@@ -176,7 +179,7 @@ async def get_current_active_user(
     return current_user
 
 
-def get_current_user_db(user_id: int, db_session: Session) -> User:
+async def get_current_user_db(user_id: int, db_session: AsyncSession) -> User:
     """
     Retrieve the current user from the database.
 
@@ -190,7 +193,8 @@ def get_current_user_db(user_id: int, db_session: Session) -> User:
     Returns:
         User: The user object retrieved from the database.
     """
-    user = db_session.query(User).filter_by(id=user_id).first()
+    result = await db_session.execute(select(User).filter_by(id=user_id))
+    user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
