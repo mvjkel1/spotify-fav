@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Playlist, Track
 from app.services.user_auth_service import get_current_user_id
-from app.token_manager import get_spotify_headers
+from app.services.token_manager import get_spotify_headers
 from app.services.utils import config
 
 
