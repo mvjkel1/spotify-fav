@@ -1,33 +1,38 @@
-# spotify-fav (for those who (really) don't like the Spotify "next song" algorithm)
+# spotify-fav  
+*(For those who (really) don't like the Spotify "next song" algorithm)*
 
-## Current status
+## Project Status
 
-This project is currently in its early development stages, and the README is being actively updated. I will continue to refine and expand it as the project evolves.
+**Early Development**  
+This project is still in its early stages, and the README will be expanded as features are added and refined.
 
-### Overview
+## Overview
 
-The project target is to serve as a personal tool to monitor Spotify listening habits.
-It it capable to track the number of times you have listened to a track on Spotify.
-Based on that it will be possible produce a playlist with the tracks you haven't skipped.
+**spotify-fav** is a personal tool designed to track your listening habits on Spotify. It monitors how often you've played a track and helps you create playlists based on songs you haven't skipped. A song is considered "not skipped" if it's still playing with 10 seconds or less remaining when the system polls the current playback state.
 
-A song is considered not skipped / listened to the end if it is currently playing during polling and is about to finish (if there are 10 seconds or less remaining).
+## Features (In Progress)
 
-### Features (In progress)
+- RESTful API with endpoints documented using Swagger/OpenAPI.
+- Tracks the number of times a song is fully listened to.
+- Playlist generation based on your listening behavior (tracks you haven't skipped).
 
-- API with few endpoints, documented using Swagger.
+## Technology Stack
 
-### Technology stack
+This project leverages the following key technologies:
 
-This project is being developed using Python and multiple libraries, the most important of which are:
+- **FastAPI**: For building API endpoints.
+- **SQLAlchemy**: To interact with the database using SQL.
+- **httpx**: HTTP client used for communicating with Spotify's API.
+- **Alembic**: For managing database migrations efficiently.
+- **pytest**: For writing and running unit and integration tests.
 
-FastAPI: responsible for the API endpoints.
-SQLAlchemy: used to handle SQL queries.
-httpx: serves as the HTTP client interface.
-Alembic: used for database migrations in a more efficient way.
-pytest: used for testing.
+## Getting Started (In Progress)
 
-## Getting Started (In progress)
+### Prerequisites
 
-### Prerequisites (In progress)
+- Python 3.x
+- Spotify Developer Account (for API credentials)
 
-### Installation (In progress)
+### Installation
+
+*Instructions to be added soon.*
