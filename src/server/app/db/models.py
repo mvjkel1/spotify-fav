@@ -6,7 +6,7 @@ playlist_track_association_table = Table(
     "playlist_track",
     Base.metadata,
     Column("playlist_id", Integer, ForeignKey("playlists.id", ondelete="CASCADE")),
-    Column("track_id", Integer, ForeignKey("tracks.id")),
+    Column("track_id", Integer, ForeignKey("tracks.id", ondelete="CASCADE")),
 )
 
 
