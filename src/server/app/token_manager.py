@@ -2,12 +2,9 @@ from time import time
 
 import httpx
 from app.db.models import AccessToken
-from dotenv import dotenv_values, find_dotenv
+from app.utils import config
 from fastapi import status, HTTPException
 from sqlalchemy.orm import Session
-
-env_path = find_dotenv()
-config = dotenv_values(env_path)
 
 
 class RefreshTokenError(Exception):
@@ -165,3 +162,21 @@ async def refresh_access_token(db_session: Session, refresh_token: str) -> dict[
             raise RefreshTokenError("Request timed out while refreshing token") from exc
         except Exception as exc:
             raise RefreshTokenError(f"Unexpected error: {str(exc)}") from exc
+
+
+async def get_spotify_headers(db_session: Session) -> dict[str, str]:
+    """
+    Generate the headers required for Spotify API requests using the current access token.
+
+    Args:
+        db_session (Session): SQLAlchemy session used to retrieve the access token.
+
+    Returns:
+        dict[str, str]: A dictionary containing the Authorization header with the access token
+        and Content-Type set to application/json.
+    """
+    token = await get_token(db_session)
+    return {
+        "Authorization": f"Bearer {token['access_token']}",
+        "Content-Type": "application/json",
+    }

@@ -3,14 +3,11 @@ import urllib.parse
 
 import httpx
 from app.token_manager import get_token_from_db, save_token
-from app.utils import generate_random_string, get_spotify_headers
-from dotenv import dotenv_values, find_dotenv
+from app.utils import generate_random_string, config
+from app.token_manager import get_spotify_headers
 from fastapi import HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-
-env_path = find_dotenv()
-config = dotenv_values(env_path)
 
 
 async def get_current_user(db_session: Session) -> dict:
