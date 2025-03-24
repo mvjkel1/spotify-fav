@@ -384,6 +384,7 @@ async def fetch_listened_tracks(user_id: int, db_session: Session) -> list[Track
         db_session.query(Track)
         .join(user_track_association_table, Track.id == user_track_association_table.c.track_id)
         .filter(user_track_association_table.c.user_id == user_id)
+        .filter(user_track_association_table.c.listened_count > 0)
         .all()
     )
     if not tracks:
