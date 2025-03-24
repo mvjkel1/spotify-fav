@@ -1,190 +1,196 @@
-import base64
-import urllib.parse
-
-import httpx
-from fastapi import HTTPException, status
-from fastapi.responses import RedirectResponse
+from typing import Annotated
+from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from app.services.token_manager import get_spotify_headers, get_token_from_db, save_token
-from app.services.utils import config, generate_random_string
+from app.db.models import User
+from passlib.context import CryptContext
+from fastapi import status
+from app.db.schemas import UserRegister
+from datetime import datetime, timezone, timedelta
+from app.services.utils import config
+from jose import jwt
+from jwt.exceptions import InvalidTokenError
+
+from app.db.database import get_db
+from app.db.schemas import UserSchema
+
+OAUTH2_SCHEME = OAuth2PasswordBearer(tokenUrl="/user_auth/token")
+PWD_CONTEXT = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
-async def get_current_user(db_session: Session) -> dict:
+async def handle_user_register(
+    db_session: Session,
+    user: UserRegister,
+) -> dict:
     """
-    Retrieve the current user's Spotify profile information.
+    Handles the user registration process.
+
+    Args:
+        db_session (Session): The database session.
+        user (UserRegister): The user registration data, including email and password.
+
+    Raises:
+        HTTPException: If the email is already registered.
+
+    Returns:
+        dict: A dictionary containing a success message and the email of the newly registered user.
+    """
+    existing_user = get_user_by_email(db_session, user.email)
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+        )
+    hashed_password = hash_password(user.password)
+    new_user = User(email=user.email, hashed_password=hashed_password)
+    db_session.add(new_user)
+    db_session.commit()
+    db_session.refresh(new_user)
+    return {"message": "User registered successfully", "email": new_user.email}
+
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+    """
+    Creates an access token with an expiration time. The token is encoded using a secret key.
+
+    Args:
+        data (dict): The data to include in the token payload.
+        expires_delta (timedelta, optional): The expiration time of the token. Default is 15 minutes.
+
+    Returns:
+        str: The encoded JWT access token.
+    """
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, config["SECRET_KEY"], algorithm=config["ALGORITHM"])
+    return encoded_jwt
+
+
+def hash_password(password: str) -> str:
+    """
+    Hashes a plain text password using the configured hashing algorithm.
+
+    Args:
+        password (str): The plain text password to hash.
+
+    Returns:
+        str: The hashed password.
+    """
+    return PWD_CONTEXT.hash(password)
+
+
+def get_user_by_email(db_session: Session, email: str) -> User | None:
+    """
+    Retrieves a user from the database by their email address.
 
     Args:
         db_session (Session): The SQLAlchemy session to interact with the database.
+        email (str): The email of the user to retrieve.
 
     Returns:
-        dict: A dictionary containing the current user's profile information.
-
-    Raises:
-        HTTPException: If the user data cannot be retrieved from Spotify.
+        User or None: The user object if found, otherwise None.
     """
-    url = f"{config['SPOTIFY_API_URL']}/me"
-    headers = await get_spotify_headers(db_session)
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url, headers=headers)
-        if response.status_code == status.HTTP_200_OK:
-            return response.json()
-        raise HTTPException(
-            status_code=response.status_code,
-            detail=f"Failed to fetch user data: {response.text}",
-        )
+    return db_session.query(User).filter_by(email=email).first()
 
 
-async def get_current_user_id(db_session: Session) -> str:
-    """
-    Retrieve the current user's Spotify user ID.
-
-    Args:
-        db_session (Session): The SQLAlchemy session to interact with the database.
-
-    Returns:
-        str: The current user's Spotify user ID.
-
-    Raises:
-        HTTPException: If the user ID is missing or cannot be retrieved.
-    """
-    current_user = await get_current_user(db_session)
-    current_user_id = current_user.get("id")
-    if not current_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to fetch current user ID",
-        )
-    return current_user_id
-
-
-def generate_spotify_login_url() -> dict[str, str]:
-    """
-    Generate the Spotify OAuth2 login URL.
-
-    Returns:
-        dict[str, str]: A dictionary containing the login URL for Spotify OAuth2 authorization.
-    """
-    params = {
-        "response_type": "code",
-        "client_id": config["CLIENT_ID"],
-        "scope": config["SPOTIFY_API_SCOPES"],
-        "redirect_uri": config["REDIRECT_URI"],
-        "state": generate_random_string(16),
-    }
-    url = config["SPOTIFY_AUTH_URL"] + "?" + urllib.parse.urlencode(params)
-    return {"login_url": url}
-
-
-async def handle_spotify_callback(code: str, db_session: Session) -> RedirectResponse:
-    """
-    Handle the callback from Spotify after user authorization.
-
-    Args:
-        code (str): The authorization code returned from Spotify.
-        db_session (Session): The SQLAlchemy session to interact with the database.
-
-    Returns:
-        RedirectResponse: Redirect to a specified URL after successful token retrieval.
-
-    Raises:
-        HTTPException: If the authorization code is missing or token retrieval fails.
-    """
-    if not code:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Authorization code missing"
-        )
-    headers = build_auth_headers()
-    form_data = build_token_request_data(code)
-    tokens = await exchange_token_with_spotify(form_data, headers)
-    access_token, refresh_token, expires_in = map(
-        tokens.get, ["access_token", "refresh_token", "expires_in"]
-    )
-    if not access_token or not refresh_token:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve tokens from Spotify",
-        )
-    save_token(access_token, refresh_token, expires_in, db_session)
-    return RedirectResponse(url=config["CALLBACK_REDIRECT_URL"])
-
-
-def build_auth_headers() -> dict[str, str]:
-    """
-    Build the authorization headers required for token exchange with Spotify.
-
-    Returns:
-        dict[str, str]: A dictionary containing the necessary authorization headers.
-    """
-    auth_header = base64.b64encode(
-        f"{config['CLIENT_ID']}:{config['CLIENT_SECRET']}".encode()
-    ).decode()
-    return {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Authorization": f"Basic {auth_header}",
-    }
-
-
-def build_token_request_data(code: str) -> dict[str, str]:
-    """
-    Build the form data for exchanging the authorization code for tokens.
-
-    Args:
-        code (str): The authorization code received from Spotify.
-
-    Returns:
-        dict[str, str]: A dictionary containing the form data for token exchange.
-    """
-    return {
-        "code": code,
-        "redirect_uri": config["REDIRECT_URI"],
-        "grant_type": "authorization_code",
-    }
-
-
-async def exchange_token_with_spotify(form_data: dict, headers: dict) -> dict[str, str]:
-    """
-    Exchange the authorization code with Spotify for access and refresh tokens.
-
-    Args:
-        form_data (dict): The form data for token exchange.
-        headers (dict): The authorization headers.
-
-    Returns:
-        dict[str, str]: A dictionary containing the tokens from Spotify.
-
-    Raises:
-        HTTPException: If an error occurs during the HTTP request.
-    """
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                config["SPOTIFY_TOKEN_URL"], data=form_data, headers=headers
-            )
-        response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        raise HTTPException(
-            status_code=exc.response.status_code, detail=f"HTTP error occurred: {exc}"
-        ) from exc
-    except httpx.RequestError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Network error occurred: {exc}"
-        ) from exc
-    return response.json()
-
-
-def is_user_authorized(db_session: Session) -> bool:
-    """
-    Check if the user is authorized based on the presence of a token in the database.
-
-    Args:
-        db_session (Session): The SQLAlchemy session to interact with the database.
-
-    Returns:
-        bool: True if user is authorized, False otherwise.
-    """
-    try:
-        get_token_from_db(db_session)
-    except HTTPException:
+def authenticate_user(db_session: Session, email: str, password: str):
+    user = get_user_by_email(db_session, email)
+    if not user:
         return False
-    return True
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verifies if the plain password matches the hashed password.
+
+    Args:
+        plain_password (str): The plain text password to verify.
+        hashed_password (str): The hashed password to compare against.
+
+    Returns:
+        bool: True if the passwords match, otherwise False.
+    """
+    return PWD_CONTEXT.verify(plain_password, hashed_password)
+
+
+def get_current_user(
+    jwt_token: Annotated[str, Depends(OAUTH2_SCHEME)],
+    db_session: Annotated[Session, Depends(get_db)],
+):
+    """
+    Retrieve the current user based on the provided JWT token.
+
+    Args:
+        token (str): A JWT token extracted from the Authorization header using OAuth2 scheme.
+        db_session (Session): The database session for querying the user.
+
+    Returns:
+        User: The user object retrieved from the database.
+
+    Raises:
+        HTTPException: If the token is invalid, the user email is missing, or the user does not exist.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(jwt_token, config["SECRET_KEY"], algorithms=config["ALGORITHM"])
+        user_email = payload.get("sub")
+        if user_email is None:
+            raise credentials_exception
+    except InvalidTokenError:
+        raise credentials_exception
+    user = get_user_by_email(db_session, user_email)
+    if user is None:
+        raise credentials_exception
+
+    return user
+
+
+async def get_current_active_user(
+    current_user: Annotated[UserSchema, Depends(get_current_user)],
+) -> UserSchema:
+    """
+    Retrieve the current active user, ensuring that the user is active.
+
+    Args:
+        current_user (UserSchema): The user object retrieved from the `get_current_user` function.
+
+    Returns:
+        UserSchema: The active user object.
+
+    Raises:
+        HTTPException: If the user is inactive.
+    """
+    if not current_user.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+    return current_user
+
+
+def get_current_user_db(user_id: int, db_session: Session) -> User:
+    """
+    Retrieve the current user from the database.
+
+    Args:
+        user_id (int): The ID of logged in user.
+        db_session (Session): The SQLAlchemy session used to query the database.
+
+    Raises:
+        HTTPException: If the user is not found.
+
+    Returns:
+        User: The user object retrieved from the database.
+    """
+    user = db_session.query(User).filter_by(id=user_id).first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return user
