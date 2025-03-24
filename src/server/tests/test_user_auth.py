@@ -2,12 +2,14 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-import status
 from app.endpoints.user_auth import get_current_user_id
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 
-from .utils.utils import (SPOTIFY_HEADERS_EXAMPLE, USER_DATA_EXAMPLE,
-                          USER_DATA_EXAMPLE_MALFORMED)
+from .utils.utils import (
+    SPOTIFY_HEADERS_EXAMPLE,
+    USER_DATA_EXAMPLE,
+    USER_DATA_EXAMPLE_MALFORMED,
+)
 
 USER_DATA = {
     "id": "user123",
