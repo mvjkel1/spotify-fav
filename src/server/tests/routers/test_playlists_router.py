@@ -27,7 +27,8 @@ PATH = "/playlists"
         ),
     ],
 )
-def test_get_my_playlists(
+@pytest.mark.asyncio
+async def test_get_my_playlists(
     db_session,
     test_client,
     mock_get_playlists_from_spotify,
@@ -38,10 +39,10 @@ def test_get_my_playlists(
 ):
     mock_get_playlists_from_spotify.return_value = mock_return_value
     mock_get_playlists_from_spotify.side_effect = mock_side_effect
-    response = test_client.get(f"{PATH}/")
+    response = await test_client.get(f"{PATH}?offset=0&limit=10")
     assert response.status_code == expected_status
     assert response.json() == expected_response
-    mock_get_playlists_from_spotify.assert_awaited_with(0, 20, db_session)
+    mock_get_playlists_from_spotify.assert_awaited_with(0, 10, 1, db_session)
 
 
 @pytest.mark.parametrize(
@@ -69,7 +70,8 @@ def test_get_my_playlists(
         ),
     ],
 )
-def test_create_playlist(
+@pytest.mark.asyncio
+async def test_create_playlist(
     db_session,
     test_client,
     mock_process_playlist_creation,
@@ -81,7 +83,7 @@ def test_create_playlist(
 ):
     mock_process_playlist_creation.return_value = mock_return_value
     mock_process_playlist_creation.side_effect = mock_side_effect
-    response = test_client.post(f"{PATH}/create?playlist_name={playlist_name}")
+    response = await test_client.post(f"{PATH}/create?playlist_name={playlist_name}")
     assert response.json() == expected_response
     assert response.status_code == expected_status
-    mock_process_playlist_creation.assert_awaited_with(playlist_name, db_session)
+    mock_process_playlist_creation.assert_awaited_with(playlist_name, 1, db_session)
