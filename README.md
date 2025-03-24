@@ -1,7 +1,3 @@
-> [!NOTE]
->
-> I am currently working on adjusting unit tests, most of them are not ready yet.
-
 # spotify-fav
 
 _For those who (really) don't like the Spotify "next song" algorithm_
@@ -14,10 +10,6 @@ It is capable of monitoring how often you've played a certain track on Spotify a
 
 Its "demo" version is already deployed at:
 https://spotify-fav-production.up.railway.app/docs
-
-> [!IMPORTANT]
->
-> This project is still in the early++ stages of development.
 
 > [!IMPORTANT]
 >
