@@ -1,11 +1,12 @@
 import asyncio
 
 import httpx
-from app.db.database import get_db
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from app.db.models import Track
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+
+from app.db.database import get_db
+from app.db.models import Track
 from app.token_manager import get_token
 from app.utils import config, get_spotify_headers
 
@@ -130,7 +131,6 @@ async def update_track_listened_count(track: Track, db_session: Session, access_
     """
     track.listened_count += 1
     db_session.commit()
-    db_session.close()
     await wait_for_song_change(access_token, track.title)
 
 

@@ -1,8 +1,8 @@
 from time import time
 
 import httpx
-from sqlalchemy.orm import Session
 from dotenv import dotenv_values, find_dotenv
+from sqlalchemy.orm import Session
 
 from app.db.models import AccessToken
 
@@ -13,13 +13,9 @@ config = dotenv_values(env_path)
 class TokenError(Exception):
     """Custom exception for token-related errors."""
 
-    pass
-
 
 class RefreshTokenError(Exception):
     """Custom exception for refresh token-related errors."""
-
-    pass
 
 
 def save_token(access_token: str, refresh_token: str, expires_in: int, db_session: Session) -> None:
