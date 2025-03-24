@@ -32,6 +32,7 @@ This project leverages the following key technologies:
 
 - Clone the repository
 - Create and activate the Python virtual environment
+- Install all packages mentioned in requirements.txt by running `pip install -r <path_to_requirements.txt>`
 - Modify the .env_example file (stored in spotify-fav/src/server) to match your Spotify API and DB credentials
 
 ```
@@ -64,4 +65,8 @@ target_metadata = Base.metadata
 
 - Execute the `run.sh` script, e.g. `./run.sh server`
 - Open the browser and navigate to `http://127.0.0.1:8000/docs`
-- Have fun.
+- To access the core API routes, you need to log in first, to do it:
+  - Generate the Login URL: Execute the /user-auth/login route to generate your unique login URL.
+  - Authenticate: Copy the URL and paste it into your browser. Enter your Spotify credentials to log in.
+  - After successful login you should be redirected back to `http://127.0.0.1:8000/docs`
+- Have fun
