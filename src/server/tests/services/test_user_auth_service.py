@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 from fastapi.responses import RedirectResponse
 import httpx
@@ -41,7 +42,10 @@ async def test_get_current_user_failure(db_session):
     with pytest.raises(HTTPException) as exc:
         await get_current_user(db_session)
     assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
-    assert exc.value.detail == "You are unauthorized, you have to login first."
+    assert (
+        exc.value.detail
+        == "Access token does not exist in the database, login first to generate one."
+    )
 
 
 @pytest.mark.asyncio
@@ -95,9 +99,11 @@ async def test_handle_spotify_callback_success(
 
 
 @pytest.mark.asyncio
-async def test_handle_spotify_callback_invalid_token_response(mock_async_client_post, db_session):
+async def test_handle_spotify_callback_invalid_token_response(
+    mock_async_client_post, mock_config_env, db_session
+):
     mock_request = httpx.Request("POST", "https://accounts.spotify.com/api/token")
-    mock_response_data = {}
+    mock_response_data = {"foo": "bar"}
     mock_async_client_post.return_value = httpx.Response(
         status_code=200, json=mock_response_data, request=mock_request
     )

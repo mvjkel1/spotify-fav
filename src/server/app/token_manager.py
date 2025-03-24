@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 env_path = find_dotenv()
 config = dotenv_values(env_path)
 
+
 class RefreshTokenError(Exception):
     """Custom exception for refresh token-related errors."""
 
@@ -60,7 +61,7 @@ async def get_token(db_session: Session) -> dict:
         return {
             "access_token": token.access_token,
             "refresh_token": token.refresh_token,
-            "expires_at": token.expires_at
+            "expires_at": token.expires_at,
         }
     return await handle_token_refresh(db_session, token.refresh_token)
 
@@ -82,7 +83,7 @@ def get_token_from_db(db_session: Session) -> AccessToken:
     if not token or not token.access_token or not token.refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="You are unauthorized, you have to login first."
+            detail="Access token does not exist in the database, login first to generate one.",
         )
     return token
 
@@ -98,7 +99,6 @@ def is_token_expired(token: AccessToken) -> bool:
         bool: True if the token is expired, False otherwise.
     """
     return token.expires_at < time()
-
 
 
 async def handle_token_refresh(db_session: Session, refresh_token: str) -> dict:
@@ -119,8 +119,7 @@ async def handle_token_refresh(db_session: Session, refresh_token: str) -> dict:
         return await refresh_access_token(db_session, refresh_token)
     except RefreshTokenError as exc:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Token refresh failed: {str(exc)}"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token refresh failed: {str(exc)}"
         ) from exc
 
 
@@ -150,11 +149,11 @@ async def refresh_access_token(db_session: Session, refresh_token: str) -> dict:
                 },
             )
             response.raise_for_status()
-            token_data = parse_token_response(response)
+            token_data = response.json()
             new_token = {
                 "access_token": token_data["access_token"],
                 "refresh_token": refresh_token,
-                "expires_at": token_data.get("expires_in", 3600)
+                "expires_at": token_data.get("expires_in", 3600),
             }
             save_token(*new_token.values(), db_session)
             return new_token
@@ -166,22 +165,3 @@ async def refresh_access_token(db_session: Session, refresh_token: str) -> dict:
             raise RefreshTokenError("Request timed out while refreshing token") from exc
         except Exception as exc:
             raise RefreshTokenError(f"Unexpected error: {str(exc)}") from exc
-
-
-def parse_token_response(response: httpx.Response) -> dict:
-    """
-    Parse the token response JSON.
-
-    Args:
-        response (httpx.Response): The HTTP response from the token refresh request.
-
-    Returns:
-        dict: The parsed token data.
-
-    Raises:
-        RefreshTokenError: If the response cannot be parsed.
-    """
-    try:
-        return response.json()
-    except ValueError as exc:
-        raise RefreshTokenError("Failed to parse token response") from exc

@@ -31,7 +31,10 @@ def test_get_current_user_success(
 def test_get_current_user_unauthorized(test_client):
     response = test_client.get("/user-auth/me")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert "You are unauthorized, you have to login first." in response.json()["detail"]
+    assert (
+        "Access token does not exist in the database, login first to generate one."
+        in response.json()["detail"]
+    )
 
 
 def test_get_current_user_failure(mock_async_client_get, mock_get_spotify_headers, test_client):
