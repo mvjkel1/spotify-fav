@@ -9,7 +9,7 @@ Since the API is not deployed anywhere (it runs on localhost), it is needed to f
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.12+
 - Spotify Developer Account (for API credentials)
 
 ## Features
