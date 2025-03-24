@@ -1,22 +1,19 @@
 from app.db.database import get_db
 from app.services.tracks_service import (
     get_current_track,
-    get_current_user_id,
     get_playback_state,
     get_recently_played_tracks,
-    get_user_polling_status,
     start_polling_tracks,
     stop_polling_tracks,
-    update_polling_status,
 )
-from app.services.user_auth_service import is_user_authorized
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["tracks"], prefix="/tracks")
 
 
-@router.get("/current-track")
+@router.get("/current")
 async def current_track(db_session: Session = Depends(get_db)) -> dict:
     """
     Retrieve the current track being played.
@@ -30,8 +27,8 @@ async def current_track(db_session: Session = Depends(get_db)) -> dict:
     return await get_current_track(db_session)
 
 
-@router.post("/poll")
-async def poll(
+@router.post("/polling/start")
+async def start_polling(
     background_tasks: BackgroundTasks, db_session: Session = Depends(get_db)
 ) -> dict[str, str]:
     """
@@ -50,7 +47,7 @@ async def poll(
     return await start_polling_tracks(background_tasks, db_session)
 
 
-@router.post("/stop-polling")
+@router.post("/polling/stop")
 async def stop_polling(db_session: Session = Depends(get_db)) -> dict[str, str]:
     """
     Stop the playback state polling.
@@ -65,7 +62,9 @@ async def stop_polling(db_session: Session = Depends(get_db)) -> dict[str, str]:
 
 
 @router.get("/recently-played")
-async def get_recently_played(limit: int = 1, db_session: Session = Depends(get_db)) -> dict:
+async def get_recently_played(
+    limit: int = Query(1, ge=1, le=50), db_session: Session = Depends(get_db)
+) -> dict:
     """
     Retrieve recently played tracks.
 
@@ -79,8 +78,8 @@ async def get_recently_played(limit: int = 1, db_session: Session = Depends(get_
     return await get_recently_played_tracks(db_session, limit)
 
 
-@router.get("/playback-state")
-async def playback_state(db_session: Session = Depends(get_db)) -> dict:
+@router.get("/playback/state")
+async def fetch_playback_state(db_session: Session = Depends(get_db)) -> dict:
     """
     Retrieve the current playback state.
 
