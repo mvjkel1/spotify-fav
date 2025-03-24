@@ -1,32 +1,32 @@
 # spotify-fav
 
-_(For those who (really) don't like the Spotify "next song" algorithm)_
+_For those who (really) don't like the Spotify "next song" algorithm_
 
 ## Overview
 
-**spotify-fav** is a personal tool designed to track your listening habits on Spotify. It monitors how often you've played a track and helps you create playlists based on songs you haven't skipped. A song is considered "not skipped" if it's still playing with 10 seconds or less remaining when the system polls the current playback state.
+**_spotify-fav_** is a personal tool designed to track your listening habits on Spotify. It monitors how often you've played a track and helps you create playlists based on songs you haven't skipped. A song is considered "not skipped" if it's still playing with 10 seconds or less remaining when the system polls the current playback state.
 Since the API is not deployed anywhere (it runs on localhost), it is needed to follow all the steps mentioned in "Getting Started" section below.
 
 ### Prerequisites
 
-- Python 3.12+
+- Python 3.12+ (the project was built using Python 3.12.7)
 - Spotify Developer Account (for API credentials)
 
 ## Features
 
 - RESTful API with few endpoints documented using Swagger/OpenAPI. Its mainly features are:
-  - Tracking the number of times a song is fully listened to.
-  - Generating playlists based on your listening behavior (tracks you haven't skipped).
+  - Tracking the number of times a song is fully listened to
+  - Generating playlists based on your listening behavior (tracks you haven't skipped)
 
 ## Technology Stack
 
 This project leverages the following key technologies:
 
-- **FastAPI**: For building API endpoints.
-- **SQLAlchemy**: To interact with the database using SQL.
-- **httpx**: HTTP client used for communicating with Spotify's API.
-- **Alembic**: For managing database migrations efficiently.
-- **pytest**: For writing and running unit and integration tests.
+- **FastAPI**: For building API endpoints
+- **SQLAlchemy**: To interact with the database using SQL
+- **httpx**: HTTP client used for communicating with Spotify's API
+- **Alembic**: For managing database migrations efficiently
+- **pytest**: For writing and running unit and integration tests
 
 ## Getting Started
 
