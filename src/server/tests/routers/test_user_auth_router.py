@@ -2,20 +2,12 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-from app.services.user_auth_service import get_current_user_id
 from fastapi import HTTPException, status
 
-from .utils.utils import (
+from ..utils.utils import (
     SPOTIFY_HEADERS_EXAMPLE,
     USER_DATA_EXAMPLE,
-    USER_DATA_EXAMPLE_MALFORMED,
 )
-
-USER_DATA = {
-    "id": "user123",
-    "display_name": "Test User",
-    "email": "testuser@example.com",
-}
 
 
 @pytest.fixture
@@ -41,7 +33,7 @@ def mock_get_current_user():
         yield mock
 
 
-@pytest.mark.parametrize("expected_output", [USER_DATA])
+@pytest.mark.parametrize("expected_output", [USER_DATA_EXAMPLE])
 def test_get_current_user_success(
     mock_async_client_get,
     mock_get_spotify_headers,
@@ -90,19 +82,3 @@ def test_get_current_user_failure(
     response = test_client.get("/user-auth/me")
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.json()["detail"] == "ERROR: Bad request"
-
-
-@pytest.mark.asyncio
-async def test_get_current_user_id_success(mock_get_current_user, db_session):
-    mock_get_current_user.return_value = USER_DATA_EXAMPLE
-    response = await get_current_user_id(db_session)
-    assert response == "user123"
-
-
-@pytest.mark.asyncio
-async def test_get_current_user_id_failure(mock_get_current_user, db_session):
-    mock_get_current_user.return_value = USER_DATA_EXAMPLE_MALFORMED
-    with pytest.raises(HTTPException) as exc:
-        response = await get_current_user_id(db_session)
-    assert exc.value.status_code == status.HTTP_400_BAD_REQUEST
-    assert exc.value.detail == "Failed to fetch current user ID"
