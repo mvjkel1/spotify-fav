@@ -20,7 +20,7 @@ async def get_spotify_headers(db_session: Session) -> dict[str, str]:
         dict[str, str]: A dictionary containing the Authorization header with the access token
         and Content-Type set to application/json.
     """
-    token = get_token(db_session)
+    token = await get_token(db_session)
     return {
         "Authorization": f"Bearer {token['access_token']}",
         "Content-Type": "application/json",

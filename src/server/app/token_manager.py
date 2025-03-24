@@ -3,7 +3,7 @@ from time import time
 import httpx
 from app.db.models import AccessToken
 from dotenv import dotenv_values, find_dotenv
-from fastapi import status
+from fastapi import status, HTTPException
 from sqlalchemy.orm import Session
 
 env_path = find_dotenv()
@@ -49,7 +49,7 @@ def save_token(
     db_session.commit()
 
 
-def get_token(db_session: Session) -> dict | None:
+async def get_token(db_session: Session) -> dict:
     """
     Retrieve the current access token if it is still valid.
 
@@ -57,22 +57,27 @@ def get_token(db_session: Session) -> dict | None:
         db_session (Session): The current database session.
 
     Returns:
-        dict: A dictionary containing the token data if valid.
-        None: If the token is invalid or expired, returns None.
+        dict: A dictionary containing the token data.
+
+    Raises:
+        HTTPException: If the token does not exist (from the initial user login).
     """
     token = db_session.query(AccessToken).first()
-
-    if token and token.expires_at > time():
+    if not token or not token.access_token or not token.refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="You are unauthorized, you have to login first.",
+        )
+    if token.expires_at > time():
         return {
             "access_token": token.access_token,
             "refresh_token": token.refresh_token,
             "expires_at": token.expires_at,
         }
+    return await refresh_access_token(db_session, token.refresh_token)
 
-    return refresh_access_token(db_session) if token else None
 
-
-async def refresh_access_token(db_session: Session) -> dict | None:
+async def refresh_access_token(db_session: Session, refresh_token: str) -> dict:
     """
     Refresh the access token using the refresh token.
 
@@ -87,34 +92,29 @@ async def refresh_access_token(db_session: Session) -> dict | None:
         RefreshTokenError: If the refresh token is invalid or request fails.
         TokenError: If no valid token is available to refresh.
     """
-    token = get_token(db_session)
-
-    if not token or not token["refresh_token"]:
-        raise TokenError(
-            "No token to refresh was found, or the refresh token is invalid."
-        )
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
                 config["SPOTIFY_TOKEN_URL"],
                 data={
                     "grant_type": "refresh_token",
-                    "refresh_token": token["refresh_token"],
+                    "refresh_token": refresh_token,
                     "client_id": config["CLIENT_ID"],
                     "client_secret": config["CLIENT_SECRET"],
                 },
             )
-            if response.status_code == status.HTTP_200_OK:
-                token_data = response.json()
-                save_token(
-                    token_data["access_token"],
-                    token["refresh_token"],
-                    token_data.get("expires_in", 3600),
-                    db_session,
-                )
-                return get_token(db_session)
+            response.raise_for_status()
+            token_data = response.json()
+            new_token = {
+                "access_token": token_data["access_token"],
+                "refresh_token": refresh_token,
+                "expires_at": token_data.get("expires_in", 3600),
+            }
+            save_token(*new_token.values(), db_session)
+            return new_token
+        except httpx.HTTPStatusError as exc:
             raise RefreshTokenError(
-                f"Failed to refresh token: {response.status_code}, {response.text}"
-            )
-        except Exception as exc:
-            raise RefreshTokenError(f"Request failed: {str(exc)}") from exc
+                f"Failed to refresh token: {e.response.status_code}, {e.response.text}"
+            ) from exc
+        except Exception as e:
+            raise RefreshTokenError(f"Request failed: {str(e)}") from exc
