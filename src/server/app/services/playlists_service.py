@@ -1,12 +1,10 @@
 import httpx
 from app.db.models import Playlist, Track
+from app.services.user_auth_service import get_current_user_id
 from app.token_manager import get_spotify_headers
 from app.utils import config
-from dotenv import dotenv_values, find_dotenv
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-
-from app.services.user_auth_service import get_current_user_id
 
 
 async def get_my_playlists_from_spotify(

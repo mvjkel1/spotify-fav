@@ -5,10 +5,9 @@ from app.services.tracks_service import (
     get_recently_played_tracks,
     poll_playback_state,
 )
+from app.services.user_auth_service import is_user_authorized
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
-
-from app.services.user_auth_service import is_user_authorized
 
 router = APIRouter(tags=["tracks"], prefix="/tracks")
 

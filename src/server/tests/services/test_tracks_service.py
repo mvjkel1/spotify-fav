@@ -1,22 +1,23 @@
 from unittest.mock import patch
-from fastapi import HTTPException, status
+
 import httpx
 import pytest
-
 from app.services.tracks_service import (
     get_current_track,
     get_playback_state,
     get_recently_played_tracks,
     handle_playing_track,
 )
+from fastapi import HTTPException, status
+
 from ..conftest import db_session
 from ..fixtures.tracks_fixtures import (
-    mock_get_spotify_headers,
+    SPOTIFY_HEADERS_EXAMPLE,
     mock_async_client_get,
     mock_config_env,
     mock_extract_track_data,
+    mock_get_spotify_headers,
     mock_process_playing_track,
-    SPOTIFY_HEADERS_EXAMPLE,
 )
 
 GET_CURRENT_TRACK_URL = "https://api.spotify.com/v1/me/player/currently-playing"

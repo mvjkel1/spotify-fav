@@ -1,15 +1,16 @@
 import httpx
 import pytest
 from fastapi import HTTPException, status
+
+from ..conftest import db_session
 from ..fixtures.user_auth_fixtures import (
-    mock_async_client_get,
-    mock_get_spotify_headers,
-    mock_generate_spotify_login_url,
-    mock_handle_spotify_callback,
     SPOTIFY_HEADERS_EXAMPLE,
     USER_DATA_EXAMPLE,
+    mock_async_client_get,
+    mock_generate_spotify_login_url,
+    mock_get_spotify_headers,
+    mock_handle_spotify_callback,
 )
-from ..conftest import db_session
 
 
 @pytest.mark.parametrize("expected_output", [USER_DATA_EXAMPLE])

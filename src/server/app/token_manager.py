@@ -3,7 +3,7 @@ from time import time
 import httpx
 from app.db.models import AccessToken
 from app.utils import config
-from fastapi import status, HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 

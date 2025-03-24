@@ -1,5 +1,6 @@
 from random import choice
 from string import ascii_letters, digits
+
 from dotenv import dotenv_values, find_dotenv
 
 env_path = find_dotenv()

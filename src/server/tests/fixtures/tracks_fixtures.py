@@ -1,6 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, patch
 
+import pytest
 
 TRACK_DATA_EXAMPLE = (10000, 12000, "Test track", "test_track_id")
 
