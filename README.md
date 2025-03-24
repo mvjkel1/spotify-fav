@@ -1,5 +1,4 @@
-# spotify-fav
-## For those who (really) don't like the Spotify "next song" algorithm.
+# spotify-fav (for those who (really) don't like the Spotify "next song" algorithm)
 
 ## Current status
 
