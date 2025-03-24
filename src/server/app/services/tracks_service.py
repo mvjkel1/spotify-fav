@@ -23,13 +23,20 @@ async def get_current_track(db_session: Session) -> dict[str, str]:
     url = f"{config['SPOTIFY_API_URL']}/me/player/currently-playing"
     headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
-        response = await client.get(url, headers=headers)
-        if response.status_code == status.HTTP_200_OK:
-            return response.json()
-        raise HTTPException(
-            status_code=response.status_code,
-            detail=f"Failed to fetch current track: {response.text}",
-        )
+        try:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(
+                status_code=exc.response.status_code,
+                detail=f"Failed to fetch current track: {exc.response.text}",
+            ) from exc
+        except httpx.RequestError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Error connecting to Spotify API: {str(exc)}",
+            ) from exc
+        return response.json()
 
 
 async def poll_playback_state(db_session: Session) -> None:
@@ -62,13 +69,20 @@ async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dic
     url = f"{config['SPOTIFY_API_URL']}/me/player/recently-played?limit={limit}"
     headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
-        response = await client.get(url, headers=headers)
-        if response.status_code == status.HTTP_200_OK:
-            return response.json()
-        raise HTTPException(
-            status_code=response.status_code,
-            detail=f"Failed to fetch recently played tracks: {response.text}",
-        )
+        try:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(
+                status_code=exc.response.status_code,
+                detail=f"Failed to fetch recently played tracks: {exc.response.text}",
+            ) from exc
+        except httpx.RequestError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Error connecting to Spotify API: {str(exc)}",
+            ) from exc
+        return response.json()
 
 
 async def get_playback_state(db_session: Session) -> dict[str, str]:
@@ -87,13 +101,20 @@ async def get_playback_state(db_session: Session) -> dict[str, str]:
     url = f"{config['SPOTIFY_API_URL']}/me/player"
     headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
-        response = await client.get(url, headers=headers)
-        if response.status_code == status.HTTP_200_OK:
-            return response.json()
-        raise HTTPException(
-            status_code=response.status_code,
-            detail=f"Failed to fetch playback state: {response.text}",
-        )
+        try:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(
+                status_code=exc.response.status_code,
+                detail=f"Failed to fetch playback state: {exc.response.text}",
+            ) from exc
+        except httpx.RequestError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Error connecting to Spotify API: {str(exc)}",
+            ) from exc
+        return response.json()
 
 
 async def handle_playing_track(state: dict, db_session: Session) -> None:
