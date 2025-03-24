@@ -47,3 +47,7 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+
+class TokenData(BaseModel):
+    email: EmailStr

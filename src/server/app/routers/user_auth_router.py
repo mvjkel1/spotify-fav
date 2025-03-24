@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from datetime import timedelta
@@ -7,13 +7,15 @@ from app.db.database import async_get_db
 from app.services.user_auth_service import (
     authenticate_user,
     create_access_token,
+    create_refresh_token,
     get_current_active_user,
+    handle_refresh_token,
     handle_user_register,
 )
 from app.db.schemas import TokenSchema, UserRegister, UserSchema
 from app.services.utils import config
 
-router = APIRouter(tags=["user_auth"], prefix="/user_auth")
+router = APIRouter(tags=["user-auth"], prefix="/user-auth")
 
 
 @router.post("/register", status_code=201)
@@ -60,13 +62,24 @@ async def generate_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token_expires = timedelta(minutes=int(config["ACCESS_TOKEN_EXPIRE_MINUTES"]))
-    access_token = create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
+    access_token = create_access_token(data={"sub": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.email})
+    refresh_token_max_age = config["REFRESH_TOKEN_EXPIRE_DAYS"] * 24 * 60 * 60
     response.set_cookie(
         key="access_token",
         value=f"Bearer {access_token}",
         max_age=access_token_expires.total_seconds(),
-        samesite="none",
+        httponly=True,
         secure=True,
+        samesite="Lax",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        max_age=refresh_token_max_age,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
     )
     return TokenSchema(access_token=access_token, token_type="bearer")
 
@@ -90,6 +103,14 @@ async def login_user(
     """
     await generate_access_token(form_data, response, db_session)
     return {"message": "Login successful"}
+
+
+@router.post("/refresh")
+async def refresh_access_token(
+    request: Request, db_session: AsyncSession = Depends(async_get_db)
+) -> dict[str, str]:
+    refresh_token = request.cookies.get("refresh_token")
+    return await handle_refresh_token(refresh_token, db_session)
 
 
 @router.get("/users/me/", response_model=UserSchema)

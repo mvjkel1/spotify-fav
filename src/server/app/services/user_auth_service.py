@@ -6,16 +6,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import User
 from passlib.context import CryptContext
 from fastapi import status
-from app.db.schemas import UserRegister
+from app.db.schemas import TokenData, UserRegister
 from datetime import datetime, timezone, timedelta
 from app.services.utils import config
-from jose import jwt
+from jose import JWTError, jwt
 from jwt.exceptions import InvalidTokenError
 from sqlalchemy import select
 from app.db.database import async_get_db
 from app.db.schemas import UserSchema
 
-OAUTH2_SCHEME = OAuth2PasswordBearer(tokenUrl="/user_auth/token")
+OAUTH2_SCHEME = OAuth2PasswordBearer(tokenUrl="/user-auth/token")
 PWD_CONTEXT = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
@@ -49,25 +49,53 @@ async def handle_user_register(
     return {"message": "User registered successfully", "email": new_user.email}
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+def create_token(data: dict, secret_key: str, expires_delta: timedelta) -> str:
     """
-    Creates an access token with an expiration time. The token is encoded using a secret key.
+    Generates a JSON Web Token (JWT).
 
     Args:
-        data (dict): The data to include in the token payload.
-        expires_delta (timedelta, optional): The expiration time of the token. Default is 15 minutes.
+        data (dict): The payload data to include in the token.
+        secret_key (str): The secret key used to sign the token.
+        expires_delta (timedelta): The duration until the token expires.
 
     Returns:
-        str: The encoded JWT access token.
+        str: The encoded JWT as a string.
     """
     to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, config["SECRET_KEY"], algorithm=config["ALGORITHM"])
+    encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=config["ALGORITHM"])
     return encoded_jwt
+
+
+def create_access_token(data: dict) -> str:
+    """
+    Creates an access token with a predefined expiration time.
+
+    Args:
+        data (dict): The payload data to include in the token.
+
+    Returns:
+        str: The encoded access token.
+    """
+    return create_token(
+        data, config["SECRET_KEY"], timedelta(minutes=int(config["ACCESS_TOKEN_EXPIRE_MINUTES"]))
+    )
+
+
+def create_refresh_token(data: dict) -> str:
+    """
+    Creates a refresh token with a predefined expiration time.
+
+    Args:
+        data (dict): The payload data to include in the token.
+
+    Returns:
+        str: The encoded refresh token.
+    """
+    return create_token(
+        data, config["SECRET_KEY"], timedelta(days=int(config["REFRESH_TOKEN_EXPIRE_DAYS"]))
+    )
 
 
 def hash_password(password: str) -> str:
@@ -119,6 +147,17 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         bool: True if the passwords match, otherwise False.
     """
     return PWD_CONTEXT.verify(plain_password, hashed_password)
+
+
+async def verify_token(token: str):
+    try:
+        payload = jwt.decode(token, config["SECRET_KEY"], algorithms=config["ALGORITHM"])
+        email = payload.get("sub")
+        if email is None:
+            return None
+        return TokenData(email)
+    except JWTError:
+        return None
 
 
 async def get_current_user(
@@ -198,3 +237,27 @@ async def get_current_user_db(user_id: int, db_session: AsyncSession) -> User:
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
+
+
+async def handle_refresh_token(refresh_token: str | None, db_session: AsyncSession) -> dict:
+    """
+    Handles the refresh token process by verifying its validity and generating a new access token.
+
+    Args:
+        refresh_token (str | None): The refresh token provided by the client.
+        db_session (AsyncSession): The SQLAlchemy session to interact with the database.
+
+    Returns:
+        dict: A dictionary containing the new access token and its token type.
+
+    Raises:
+        HTTPException: If the refresh token is missing.
+        Exception: If the refresh token cannot be verified.
+    """
+    if not refresh_token:
+        raise HTTPException("Refresh token does not exist.")
+    user_data = await verify_token(refresh_token, db_session)
+    if not user_data:
+        raise Exception("Cannot verify the refresh token.")
+    new_access_token = await create_access_token(data={"sub": user_data.username_or_email})
+    return {"access_token": new_access_token, "token_type": "bearer"}
