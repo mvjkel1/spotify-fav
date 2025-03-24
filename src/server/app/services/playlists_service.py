@@ -1,16 +1,15 @@
 import asyncio
 from itertools import chain
-from time import perf_counter
 
 import httpx
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+
 from app.db.models import Playlist
-from app.db.schemas import PlaylistResponse
 from app.services.token_manager import get_spotify_headers
 from app.services.tracks_service import fetch_listened_tracks
 from app.services.user_auth_service import get_current_user_id
-from app.services.utils import config, time_it_async
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from app.services.utils import config
 
 
 async def get_playlists_from_spotify(offset: int, limit: int, db_session: Session) -> dict:
@@ -117,7 +116,7 @@ async def process_playlist_creation(playlist_name: str, db_session: Session) -> 
         tracks_db = [track for track in tracks if track.title not in existing_track_titles]
         if not tracks_db:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="No new tracks to be added to a playlist.",
             )
         playlist_id = await create_playlist_on_spotify(user_id, playlist_name, spotify_headers)
