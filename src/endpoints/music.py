@@ -1,7 +1,13 @@
+from typing import Annotated
+
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from database import get_db
 
 router = APIRouter()
+db_dependency = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/current_music")
