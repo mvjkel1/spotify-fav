@@ -1,12 +1,11 @@
 # spotify-fav
+## For those who (really) don't like the Spotify "next song" algorithm.
 
 ## Current status
 
 This project is currently in its early development stages, and the README is being actively updated. I will continue to refine and expand it as the project evolves.
 
 ### Overview
-
-## For those who (really) don't like the Spotify "next song" algorithm.
 
 The project target is to serve as a personal tool to monitor Spotify listening habits.
 It it capable to track the number of times you have listened to a track on Spotify.
