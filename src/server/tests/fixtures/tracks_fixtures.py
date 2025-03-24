@@ -1,7 +1,13 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from ..utils.utils import SPOTIFY_HEADERS_EXAMPLE
+
+TRACK_DATA_EXAMPLE = (10000, 12000, "Test track", "test_track_id")
+
+SPOTIFY_HEADERS_EXAMPLE = {
+    "Authorization": "Bearer access_token",
+    "Content-Type": "application/json",
+}
 
 
 @pytest.fixture(scope="function")
@@ -34,3 +40,26 @@ def mock_config_env():
         },
     ) as mock:
         yield mock
+
+
+@pytest.fixture(scope="module")
+def mock_extract_track_data():
+    with patch(
+        "app.services.tracks_service.extract_track_data",
+        return_value=TRACK_DATA_EXAMPLE,
+    ) as mock:
+        yield mock
+
+
+@pytest.fixture(scope="function")
+def mock_process_playing_track():
+    with patch("app.services.tracks_service.process_playing_track", new_callable=AsyncMock) as mock:
+        yield mock
+
+
+# @pytest.fixture(scope="module")
+# def mock_check_track_progress():
+#     with patch(
+#         "app.services.tracks_service.check_track_progress", return_value=(True, False)
+#     ) as mock:
+#         yield mock

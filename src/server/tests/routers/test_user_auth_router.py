@@ -6,10 +6,10 @@ from ..fixtures.user_auth_fixtures import (
     mock_get_spotify_headers,
     mock_generate_spotify_login_url,
     mock_handle_spotify_callback,
+    SPOTIFY_HEADERS_EXAMPLE,
+    USER_DATA_EXAMPLE,
 )
 from ..conftest import db_session
-
-from ..utils.utils import SPOTIFY_HEADERS_EXAMPLE, USER_DATA_EXAMPLE
 
 
 @pytest.mark.parametrize("expected_output", [USER_DATA_EXAMPLE])
