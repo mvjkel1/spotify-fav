@@ -56,8 +56,18 @@ class Playlist(Base):
 
 
 class AccessToken(Base):
+    """
+    Represents an access token entry in the database.
+
+    Attributes:
+        id (int): The primary key of the token record.
+        access_token (str): The current access token used for authorization.
+        refresh_token (str): The token used to refresh the access token when it expires.
+        expires_at (float): The Unix timestamp indicating when the access token expires.
+    """
+
     __tablename__ = "tokens"
     id = Column(Integer, primary_key=True)
     access_token = Column(String, nullable=False)
     refresh_token = Column(String, nullable=False)
-    expires_at = Column(Float, nullable=True)
+    expires_at = Column(Float, nullable=False)
