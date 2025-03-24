@@ -124,9 +124,9 @@ async def callback(request: Request, db_session: Session = Depends(get_db)):
         async with httpx.AsyncClient() as client:
             response = await client.post(token_url, data=form_data, headers=headers)
         response_json = response.json()
-        access_token = response_json["access_token"]
-        refresh_token = response_json["refresh_token"]
-        expires_in = response_json["expires_in"]
+        access_token = response_json.get("access_token")
+        refresh_token = response_json.get("refresh_token")
+        expires_in = response_json.get("expires_in")
         if not access_token or not refresh_token:
             raise HTTPException(
                 status_code=500, detail="Failed to retrieve tokens from Spotify API"
