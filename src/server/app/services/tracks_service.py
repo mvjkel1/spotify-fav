@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Track
 from app.token_manager import get_spotify_headers
-from app.utils import config
+from app.services.utils import config
 
 
 async def get_current_track(db_session: Session) -> dict:
