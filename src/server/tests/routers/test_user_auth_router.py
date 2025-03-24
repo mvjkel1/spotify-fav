@@ -3,12 +3,13 @@ import pytest
 from fastapi import HTTPException, status
 
 from ..conftest import db_session
-from ..fixtures.constants import SPOTIFY_HEADERS_EXAMPLE, USER_DATA_EXAMPLE
+from ..fixtures.constants import GET_CURRENT_USER_URL, SPOTIFY_HEADERS_EXAMPLE, USER_DATA_EXAMPLE
 from ..fixtures.user_auth_fixtures import (
     mock_async_client_get,
     mock_generate_spotify_login_url,
     mock_get_spotify_headers,
     mock_handle_spotify_callback,
+    mock_config_env,
 )
 
 
@@ -23,7 +24,7 @@ def test_get_current_user_success(
     response = test_client.get("/user-auth/me")
     assert response.json() == expected_output
     mock_async_client_get.assert_awaited_with(
-        "https://api.spotify.com/v1/me",
+        GET_CURRENT_USER_URL,
         headers=SPOTIFY_HEADERS_EXAMPLE,
     )
 
@@ -44,6 +45,7 @@ def test_get_current_user_failure(mock_async_client_get, mock_get_spotify_header
     response = test_client.get("/user-auth/me")
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.json()["detail"] == "ERROR: Bad request"
+    mock_async_client_get.assert_awaited_with(GET_CURRENT_USER_URL, headers=SPOTIFY_HEADERS_EXAMPLE)
 
 
 def test_login(test_client, mock_generate_spotify_login_url):
