@@ -26,6 +26,16 @@ SPOTIFY_HEADERS_EXAMPLE = {
     "Content-Type": "application/json",
 }
 
+ENV_CONFIG_EXAMPLE = {
+    "CLIENT_ID": "CLIENT_ID",
+    "CLIENT_SECRET": "CLIENT_SECRET",
+    "SPOTIFY_API_SCOPES": "SPOTIFY_API_SCOPES",
+    "SPOTIFY_TOKEN_URL": "SPOTIFY_TOKEN_URL",
+    "REDIRECT_URI": "REDIRECT_URI",
+    "CALLBACK_REDIRECT_URL": "CALLBACK_REDIRECT_URL",
+    "SPOTIFY_AUTH_URL": "SPOTIFY_AUTH_URL",
+}
+
 
 @pytest.fixture(scope="function")
 def mock_get_spotify_headers():
@@ -62,15 +72,7 @@ def mock_get_current_user():
 def mock_config_env():
     with patch(
         "app.services.user_auth_service.config",
-        {
-            "CLIENT_ID": "CLIENT_ID",
-            "CLIENT_SECRET": "CLIENT_SECRET",
-            "SPOTIFY_API_SCOPES": "SPOTIFY_API_SCOPES",
-            "SPOTIFY_TOKEN_URL": "SPOTIFY_TOKEN_URL",
-            "REDIRECT_URI": "REDIRECT_URI",
-            "CALLBACK_REDIRECT_URL": "CALLBACK_REDIRECT_URL",
-            "SPOTIFY_AUTH_URL": "SPOTIFY_AUTH_URL",
-        },
+        ENV_CONFIG_EXAMPLE,
     ) as mock:
         yield mock
 
