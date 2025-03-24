@@ -59,16 +59,16 @@ async def create_playlist_service(playlist_name: str, db_session: Session) -> di
     """
     try:
         user_id = await get_current_user_id(db_session)
-        tracks_db = get_tracks_for_playlist(db_session)
+        tracks_db = fetch_listened_tracks(db_session)
         playlist = create_playlist_in_db(playlist_name, tracks_db, db_session)
         spotify_headers = await get_spotify_headers(db_session)
         playlist_id = await create_playlist_on_spotify(user_id, playlist.name, spotify_headers)
         await add_tracks_to_playlist(
             playlist_id, [track.spotify_id for track in tracks_db], spotify_headers
         )
-        return {"message": f"The '{playlist_name}' playlist created successfully."}
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text) from exc
+    return {"message": f"The '{playlist_name}' playlist created successfully."}
 
 
 async def create_playlist_on_spotify(
@@ -129,7 +129,7 @@ async def add_tracks_to_playlist(
             ) from exc
 
 
-def get_tracks_for_playlist(db_session: Session) -> list[Track]:
+def fetch_listened_tracks(db_session: Session) -> list[Track]:
     """
     Fetch tracks from the database that have been listened to (i.e., have a nonzero listened count).
 
@@ -139,7 +139,13 @@ def get_tracks_for_playlist(db_session: Session) -> list[Track]:
     Returns:
         list[Track]: A list of tracks with a listened count greater than zero.
     """
-    return db_session.query(Track).filter(Track.listened_count > 0).all()
+    tracks_db = db_session.query(Track).filter(Track.listened_count > 0).all()
+    if not tracks_db:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No tracks you have listened to were found.",
+        )
+    return tracks_db
 
 
 def create_playlist_in_db(playlist_name: str, tracks: list, db_session: Session) -> Playlist:
