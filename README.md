@@ -8,27 +8,18 @@ This project is in the initial development phase, so the README is a work in pro
 
 The project target is to serve as a personal tool to monitor Spotify listening habits.
 
-It will track the number of times you have listened to a track in a given timespan (e.g. in a week), and based on that it will produce a custom playlist with the most listened tracks.
+It will track the number of times you have listened to a track in a given timespan (e.g. in a week), and based on that it will be possible produce a playlist with the *most* listened tracks.
 
-### Features
+### Features (In progress)
 
-- In progress
+- API with few endpoints, initially to work with tracks and playlists.
+- A simple React landing page to facilitate user authentication in more practical way.
 
-### Technology Stack
+### Technology Stack (In progress)
 
-This project is built using Python and the following technologies:
+## Getting Started (In progress)
 
-- **FastAPI:** For handling all HTTP requests and building the API.
-- **httpx:** For making asynchronous HTTP requests to the Spotify API.
-- **Pydantic:** For data validation and settings management.
-- **SQLAlchemy:** For database interactions and ORM functionality.
+### Prerequisites (In progress)
 
-## Getting Started
+### Installation (In progress)
 
-### Prerequisites
-
-- In progress
-
-### Installation
-
-- In progress
