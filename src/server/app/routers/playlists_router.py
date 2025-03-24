@@ -1,5 +1,5 @@
 from app.db.database import get_db
-from app.services.playlists_service import create_playlist_service, get_my_playlists_from_spotify
+from app.services.playlists_service import process_playlist_creation, get_my_playlists_from_spotify
 from app.services.user_auth_service import get_current_user_id
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -39,4 +39,4 @@ async def create_playlist(playlist_name: str, db_session: Session = Depends(get_
     Returns:
         dict: A dictionary containing the result message.
     """
-    return await create_playlist_service(playlist_name, db_session)
+    return await process_playlist_creation(playlist_name, db_session)
