@@ -55,7 +55,7 @@ async def get_current_user_id(db_session: Session) -> str:
     return current_user_id
 
 
-def generate_spotify_login_url() -> dict:
+async def generate_spotify_login_url() -> dict:
     """
     Generate the Spotify OAuth2 login URL.
 

@@ -1,12 +1,13 @@
-from unittest.mock import patch
-
 import httpx
 import pytest
 from fastapi import HTTPException, status
 from ..fixtures.user_auth_fixtures import (
     mock_async_client_get,
     mock_get_spotify_headers,
+    mock_generate_spotify_login_url,
+    mock_handle_spotify_callback,
 )
+from ..conftest import db_session
 
 from ..utils.utils import SPOTIFY_HEADERS_EXAMPLE, USER_DATA_EXAMPLE
 
@@ -27,24 +28,10 @@ def test_get_current_user_success(
     )
 
 
-@pytest.mark.parametrize(
-    "expected_response",
-    [
-        {
-            "detail": (
-                "Failed to fetch user data: {\n"
-                '  "error": {\n'
-                '    "status": 401,\n'
-                '    "message": "Invalid access token"\n'
-                "  }\n}"
-            )
-        },
-    ],
-)
-def test_get_current_user_unauthorized(mock_get_spotify_headers, test_client, expected_response):
+def test_get_current_user_unauthorized(test_client):
     response = test_client.get("/user-auth/me")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert response.json() == expected_response
+    assert "You are unauthorized, you have to login first." in response.json()["detail"]
 
 
 def test_get_current_user_failure(mock_async_client_get, mock_get_spotify_headers, test_client):
@@ -54,3 +41,19 @@ def test_get_current_user_failure(mock_async_client_get, mock_get_spotify_header
     response = test_client.get("/user-auth/me")
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.json()["detail"] == "ERROR: Bad request"
+
+
+def test_login(test_client, mock_generate_spotify_login_url):
+    mock_generate_spotify_login_url.return_value = {"login_url": "https://fake-spotify-login.com"}
+    response = test_client.get("/user-auth/login")
+    assert response.status_code == 200
+    assert response.json() == {"login_url": "https://fake-spotify-login.com"}
+    mock_generate_spotify_login_url.assert_awaited_once()
+
+
+def test_callback(test_client, mock_handle_spotify_callback, db_session):
+    fake_code = "fake_auth_code"
+    mock_handle_spotify_callback.return_value = {"detail": "Spotify callback handled"}
+    response = test_client.get(f"/user-auth/callback?code={fake_code}")
+    assert response.status_code == 200
+    mock_handle_spotify_callback.assert_awaited_once_with(fake_code, db_session)
