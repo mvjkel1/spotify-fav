@@ -1,10 +1,9 @@
-from os import getenv
-
 import httpx
-from dotenv import load_dotenv
+from dotenv import dotenv_values, find_dotenv
 from fastapi import APIRouter, HTTPException
 
-load_dotenv()
+env_path = find_dotenv()
+config = dotenv_values(env_path)
 
 router = APIRouter()
 
@@ -26,8 +25,8 @@ async def generate_token() -> dict:
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     data = {
         "grant_type": "client_credentials",
-        "client_id": getenv("CLIENT_ID"),
-        "client_secret": getenv("CLIENT_SECRET"),
+        "client_id": config["CLIENT_ID"],
+        "client_secret": config["CLIENT_SECRET"],
     }
 
     async with httpx.AsyncClient() as client:

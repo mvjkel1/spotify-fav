@@ -1,12 +1,12 @@
 import base64
 import urllib.parse
-from os import getenv
 
 import httpx
-from dotenv import load_dotenv
+from dotenv import dotenv_values, find_dotenv
 from fastapi import APIRouter, HTTPException, Request
 
-load_dotenv()
+env_path = find_dotenv()
+config = dotenv_values(env_path)
 
 router = APIRouter()
 
@@ -23,12 +23,12 @@ async def login() -> dict:
         dict: A dictionary containing the URL for the user to log in via Spotify.
     """
     params = {
-        "client_id": getenv("CLIENT_ID"),
+        "client_id": config["CLIENT_ID"],
         "response_type": "code",
-        "redirect_uri": getenv("REDIRECT_URI"),
+        "redirect_uri": config["REDIRECT_URI"],
         "scope": "user-read-currently-playing user-read-playback-state",
     }
-    url = getenv("SPOTIFY_AUTH_URL") + "?" + urllib.parse.urlencode(params)
+    url = config["SPOTIFY_AUTH_URL"] + "?" + urllib.parse.urlencode(params)
     return {"url": url}
 
 
@@ -53,12 +53,12 @@ async def callback(request: Request) -> dict:
     data = {
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": getenv("REDIRECT_URI"),
-        "client_id": getenv("CLIENT_ID"),
-        "client_secret": getenv("CLIENT_SECRET"),
+        "redirect_uri": config["REDIRECT_URI"],
+        "client_id": config["CLIENT_ID"],
+        "client_secret": config["CLIENT_SECRET"],
     }
     encoded_credentials = base64.b64encode(
-        f"{getenv("CLIENT_ID")}:{getenv("CLIENT_SECRET")}".encode()
+        f"{config["CLIENT_ID"]}:{config["CLIENT_SECRET"]}".encode()
     ).decode()
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -66,7 +66,7 @@ async def callback(request: Request) -> dict:
     }
 
     async with httpx.AsyncClient() as client:
-        response = await client.post(getenv("SPOTIFY_TOKEN_URL"), headers=headers, data=data)
+        response = await client.post(config["SPOTIFY_TOKEN_URL"], headers=headers, data=data)
         if response.status_code == 200:
             token_response = response.json()
             return {"access_token": token_response["access_token"]}

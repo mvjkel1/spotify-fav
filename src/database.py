@@ -1,13 +1,12 @@
-from os import getenv
-
-from dotenv import load_dotenv
+from dotenv import dotenv_values, find_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-load_dotenv()
+env_path = find_dotenv()
+config = dotenv_values(env_path)
 
-SQLALCHEMY_DATABASE_URL = getenv("SQLALCHEMY_DATABASE_URL")
+SQLALCHEMY_DATABASE_URL = config["SQLALCHEMY_DATABASE_URL"]
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
