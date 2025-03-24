@@ -1,8 +1,9 @@
 import httpx
 import pytest
 from fastapi import HTTPException, status
-
-from app.db.models import Track
+from sqlalchemy import insert
+from sqlalchemy.ext.asyncio.session import AsyncSession
+from app.db.models import Track, User, user_track_association_table
 from app.services.tracks_service import (
     fetch_listened_tracks,
     get_current_track,
@@ -16,9 +17,9 @@ from ..fixtures.constants import (
     GET_CURRENT_TRACK_URL,
     GET_PLAYBACK_STATE_URL,
     GET_RECENTLY_PLAYED_TRACKS_URL,
+    SPOTIFY_HEADERS_EXAMPLE,
 )
 from ..fixtures.services.tracks_service_fixtures import (
-    SPOTIFY_HEADERS_EXAMPLE,
     mock_async_client_get,
     mock_config_env,
     mock_extract_track_data,
@@ -33,9 +34,9 @@ async def test_get_current_track_success(
 ):
     mock_request = httpx.Request("GET", "mock_request")
     mock_async_client_get.return_value = httpx.Response(
-        status_code=200, json={"track": "track123"}, request=mock_request
+        status_code=status.HTTP_200_OK, json={"track": "track123"}, request=mock_request
     )
-    response = await get_current_track(db_session)
+    response = await get_current_track(user_id=1, db_session=db_session)
     mock_async_client_get.assert_awaited_with(
         GET_CURRENT_TRACK_URL,
         headers=SPOTIFY_HEADERS_EXAMPLE,
@@ -52,7 +53,7 @@ async def test_get_current_track_failure(
         status_code=status.HTTP_401_UNAUTHORIZED, request=mock_request
     )
     with pytest.raises(HTTPException) as exc:
-        await get_current_track(db_session)
+        await get_current_track(user_id=1, db_session=db_session)
     mock_async_client_get.assert_awaited_with(
         GET_CURRENT_TRACK_URL,
         headers=SPOTIFY_HEADERS_EXAMPLE,
@@ -67,11 +68,11 @@ async def test_get_recently_played_tracks_success(
 ):
     mock_request = httpx.Request("GET", "mock_request")
     mock_async_client_get.return_value = httpx.Response(
-        status_code=200,
+        status_code=status.HTTP_200_OK,
         json={"track1": "track1", "track2": "track2"},
         request=mock_request,
     )
-    response = await get_recently_played_tracks(db_session)
+    response = await get_recently_played_tracks(user_id=1, db_session=db_session)
     mock_async_client_get.assert_awaited_with(
         GET_RECENTLY_PLAYED_TRACKS_URL,
         headers=SPOTIFY_HEADERS_EXAMPLE,
@@ -88,7 +89,7 @@ async def test_get_recently_played_tracks_failure(
         status_code=status.HTTP_401_UNAUTHORIZED, request=mock_request
     )
     with pytest.raises(HTTPException) as exc:
-        await get_recently_played_tracks(db_session)
+        await get_recently_played_tracks(user_id=1, db_session=db_session)
     mock_async_client_get.assert_awaited_with(
         GET_RECENTLY_PLAYED_TRACKS_URL,
         headers=SPOTIFY_HEADERS_EXAMPLE,
@@ -105,7 +106,7 @@ async def test_get_playback_state_success(
     mock_async_client_get.return_value = httpx.Response(
         status_code=status.HTTP_200_OK, json={"state": "playing"}, request=mock_request
     )
-    response = await get_playback_state(db_session)
+    response = await get_playback_state(user_id=1, db_session=db_session)
     mock_async_client_get.assert_awaited_with(
         GET_PLAYBACK_STATE_URL,
         headers=SPOTIFY_HEADERS_EXAMPLE,
@@ -122,7 +123,7 @@ async def test_get_playback_state_failure(
         status_code=status.HTTP_401_UNAUTHORIZED, request=mock_request
     )
     with pytest.raises(HTTPException) as exc:
-        await get_playback_state(db_session)
+        await get_playback_state(user_id=1, db_session=db_session)
     mock_async_client_get.assert_awaited_with(
         GET_PLAYBACK_STATE_URL,
         headers=SPOTIFY_HEADERS_EXAMPLE,
@@ -132,19 +133,32 @@ async def test_get_playback_state_failure(
 
 
 @pytest.mark.asyncio
-async def test_handle_playing_track_success(
-    db_session,
-    mock_process_playing_track,
-):
+@pytest.mark.parametrize(
+    "expected_args",
+    [
+        {
+            "track_db": None,
+            "ten_seconds_passed": True,
+            "ten_seconds_left": False,
+            "track_title": "test track",
+            "id": "test_track_id",
+            "user_id": 1,
+        }
+    ],
+)
+async def test_handle_playing_track_success(db_session, mock_process_playing_track, expected_args):
     state = {
         "is_playing": True,
         "progress_ms": 10000,
-        "item": {"duration_ms": 11112222, "name": "test track", "id": "test_track_id"},
+        "item": {
+            "duration_ms": 11112222,
+            "name": "test track",
+            "id": "test_track_id",
+        },
     }
-    await handle_playing_track(state, db_session)
-    mock_process_playing_track.assert_awaited_with(
-        None, True, False, "test track", "test_track_id", db_session
-    )
+
+    await handle_playing_track(state, user_id=1, db_session=db_session)
+    mock_process_playing_track.assert_awaited_with(*expected_args.values(), db_session)
 
 
 @pytest.mark.asyncio
@@ -157,28 +171,40 @@ async def test_handle_playing_track_failure(
         "progress_ms": 10000,
         "item": {"duration_ms": 11112222, "name": "test track", "id": "test_track_id"},
     }
-    await handle_playing_track(state, db_session)
+    await handle_playing_track(state, user_id=1, db_session=db_session)
     mock_process_playing_track.assert_not_awaited()
 
 
-def test_fetch_listened_tracks_success(db_session):
-    test_track = Track(title="Test Track", spotify_id="test_id", listened_count=5)
+@pytest.mark.asyncio
+async def test_fetch_listened_tracks_success(db_session: AsyncSession):
+    test_user = User(id=1, spotify_uid=1, email="user@example.com", hashed_password="P!w!D")
+    db_session.add(test_user)
+    test_track = Track(
+        id=1,
+        title="Test Track",
+        spotify_id="test_id",
+    )
     db_session.add(test_track)
-    db_session.commit()
-    response = fetch_listened_tracks(db_session)
+    await db_session.execute(
+        insert(user_track_association_table).values(
+            user_id=test_user.id, track_id=test_track.id, listened_count=1
+        )
+    )
+    await db_session.commit()
+
+    response = await fetch_listened_tracks(user_id=1, db_session=db_session)
     assert len(response) == 1
     fetched_track = response[0]
     assert isinstance(fetched_track, Track)
     assert fetched_track.title == test_track.title
     assert fetched_track.spotify_id == test_track.spotify_id
-    assert fetched_track.listened_count == test_track.listened_count
 
 
-def test_fetch_listened_tracks_failure(db_session):
-    test_track = Track(title="Test Track", spotify_id="test_id", listened_count=0)
+async def test_fetch_listened_tracks_failure(db_session):
+    test_track = Track(title="Test Track", spotify_id="test_id")
     db_session.add(test_track)
-    db_session.commit()
+    await db_session.commit()
     with pytest.raises(HTTPException) as exc:
-        fetch_listened_tracks(db_session)
+        await fetch_listened_tracks(user_id=1, db_session=db_session)
     assert exc.value.status_code == status.HTTP_404_NOT_FOUND
     assert exc.value.detail == "No tracks you have listened to were found."
