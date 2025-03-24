@@ -78,3 +78,9 @@ def mock_config_env():
 def mock_get_all_playlists():
     with patch("app.services.playlists_service.get_all_playlists") as mock:
         yield mock
+
+
+@pytest.fixture(scope="function")
+def mock_sync_playlists():
+    with patch("app.services.playlists_service.sync_playlists") as mock:
+        yield mock

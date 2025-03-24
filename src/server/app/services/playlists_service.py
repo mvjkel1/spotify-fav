@@ -66,6 +66,28 @@ async def retrieve_playlist_from_spotify_by_spotify_id(
         return response.json()
 
 
+async def sync_playlists(db_session: Session) -> None:
+    """
+    Synchronize spotify-fav playlists between database and the Spotify.
+
+    Args:
+        db_session (Session): The SQLAlchemy session to interact with the database.
+
+    Returns:
+        None
+    """
+    db_playlists_ids = {playlist.spotify_id for playlist in db_session.query(Playlist).all()}
+    spotify_playlists = await get_all_playlists(db_session)
+    spotify_playlists_ids = {
+        playlist["id"]
+        for playlist in list(spotify_playlists.values())[0]
+        if "spotify_fav" in playlist["name"]
+    }
+    playlists_to_remove_ids = db_playlists_ids - spotify_playlists_ids
+    db_session.query(Playlist).filter(Playlist.spotify_id.in_(playlists_to_remove_ids)).delete()
+    db_session.commit()
+
+
 async def get_all_playlists(db_session: Session) -> dict:
     """
     Retrieve all playlists for the current user from Spotify by fetching in batches.
@@ -99,6 +121,46 @@ async def get_all_playlists(db_session: Session) -> dict:
     return {"playlists": playlists}
 
 
+async def filter_new_tracks(db_session: Session, playlists: dict):
+    """
+    Filter out tracks that are already included in existing playlists.
+
+    Args:
+        db_session (Session): The SQLAlchemy session to interact with the database.
+        playlists (dict): A dictionary containing existing playlists and their tracks.
+
+    Returns:
+        list: A list of tracks that are new and not included in any existing playlists.
+    """
+    tracks = fetch_listened_tracks(db_session)
+    playlist_tracks = await cache_playlist_tracks(playlists["playlists"], db_session)
+    existing_track_titles = list(chain.from_iterable(playlist_tracks.values()))
+    return [track for track in tracks if track.title not in existing_track_titles]
+
+
+async def create_playlist(
+    playlist_name: str, tracks_db: list, user_id: str, db_session: Session, spotify_headers: dict
+) -> None:
+    """
+    Create a new playlist on Spotify and store it in the local database.
+
+    Args:
+        playlist_name (str): The name of the playlist to be created.
+        tracks_db (list): A list of track objects to be added to the playlist.
+        user_id (str): The Spotify user ID.
+        db_session (Session): The SQLAlchemy session to interact with the database.
+        spotify_headers (dict): The headers for Spotify API requests.
+
+    Returns:
+        None
+    """
+    playlist_id = await create_playlist_on_spotify(user_id, playlist_name, spotify_headers)
+    create_playlist_in_db(playlist_name, playlist_id, tracks_db, db_session)
+    await add_tracks_to_playlist(
+        playlist_id, [track.spotify_id for track in tracks_db], spotify_headers
+    )
+
+
 async def process_playlist_creation(playlist_name: str, db_session: Session) -> dict[str, str]:
     """
     Create a new playlist in the local database and on Spotify.
@@ -115,25 +177,19 @@ async def process_playlist_creation(playlist_name: str, db_session: Session) -> 
         HTTPException: If there is an HTTP error when interacting with Spotify's API.
     """
     try:
+        await sync_playlists(db_session)
         user_id, playlists, spotify_headers = await asyncio.gather(
             get_current_user_id(db_session),
             get_all_playlists(db_session),
             get_spotify_headers(db_session),
         )
-        tracks = fetch_listened_tracks(db_session)
-        playlist_tracks = await cache_playlist_tracks(playlists["playlists"], db_session)
-        existing_track_titles = list(chain.from_iterable(playlist_tracks.values()))
-        tracks_db = [track for track in tracks if track.title not in existing_track_titles]
+        tracks_db = await filter_new_tracks(db_session, playlists)
         if not tracks_db:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="The playlist cannot be created since there are no new tracks listened recently.",
             )
-        playlist_id = await create_playlist_on_spotify(user_id, playlist_name, spotify_headers)
-        create_playlist_in_db(playlist_name, playlist_id, tracks_db, db_session)
-        await add_tracks_to_playlist(
-            playlist_id, [track.spotify_id for track in tracks_db], spotify_headers
-        )
+        await create_playlist(playlist_name, tracks_db, user_id, db_session, spotify_headers)
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text) from exc
     except Exception as exc:
@@ -163,6 +219,7 @@ async def create_playlist_on_spotify(
         raised with the status code and error details from the response.
     """
     url = f"{config['SPOTIFY_API_URL']}/users/{user_id}/playlists"
+    playlist_name = f"{playlist_name}_spotify_fav"
     payload = {"name": playlist_name}
     async with httpx.AsyncClient() as client:
         response = await client.post(url, headers=spotify_headers, json=payload)
