@@ -1,7 +1,6 @@
 from dotenv import dotenv_values, find_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 env_path = find_dotenv()
 config = dotenv_values(env_path)

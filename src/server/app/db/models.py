@@ -1,7 +1,6 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Table
+from app.db.database import Base
+from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
-
-from database import Base
 
 playlist_track_association_table = Table(
     "playlist_track",
@@ -51,8 +50,9 @@ class Playlist(Base):
     )
 
 
-class SpotifyToken(Base):
-    __tablename__ = "spotify_tokens"
-    user_id = Column(String, primary_key=True)
-    access_token = Column(String)
-    refresh_token = Column(String)
+class AccessToken(Base):
+    __tablename__ = "tokens"
+    id = Column(Integer, primary_key=True)
+    access_token = Column(String, nullable=False)
+    refresh_token = Column(String, nullable=False)
+    expires_at = Column(Float, nullable=True)

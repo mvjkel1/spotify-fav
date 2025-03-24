@@ -1,34 +1,34 @@
 import asyncio
 
 import httpx
+from app.db.database import get_db
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from app.db.models import Track
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-
-from database import get_db
-from models import Track
-from token_manager import token_manager
-from utils import get_spotify_headers, config, refresh_token
+from app.token_manager import get_token
+from app.utils import config, get_spotify_headers
 
 router = APIRouter(tags=["music"])
 
 
 @router.get("/current_music")
-async def current_track() -> dict:
+async def current_track(db_session: Session = Depends(get_db)) -> dict:
     """
     Fetch the currently playing track from the user's Spotify account.
 
     Args:
-        access_token (str): Spotify user access token.
+        db_session (Session): The database session dependency used to obtain headers.
 
     Returns:
-        dict: JSON response with the currently playing track.
+        dict: A JSON response containing details about the currently playing track.
 
     Raises:
-        HTTPException: If the Spotify API response is unsuccessful.
+        HTTPException: If the Spotify API response is unsuccessful, an HTTPException is raised
+        with the status code and error details from the response.
     """
     url = f"{config['SPOTIFY_API_URL']}/me/player/currently-playing"
-    headers = get_spotify_headers()
+    headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
         if response.status_code == 200:
@@ -37,18 +37,22 @@ async def current_track() -> dict:
 
 
 @router.get("/playback_state")
-async def playback_state() -> dict:
+async def playback_state(db_session: Session = Depends(get_db)) -> dict:
     """
     Fetch the current playback state from the user's Spotify account.
 
+    Args:
+        db_session (Session): The database session dependency used to obtain headers.
+
     Returns:
-        dict: JSON response with the playback state.
+        dict: A JSON response containing the current playback state.
 
     Raises:
-        HTTPException: If the Spotify API response is unsuccessful.
+        HTTPException: If the Spotify API response is unsuccessful, an HTTPException is raised
+        with the status code and error details from the response.
     """
     url = f"{config['SPOTIFY_API_URL']}/me/player"
-    headers = get_spotify_headers()
+    headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
         if response.status_code == 200:
@@ -56,18 +60,17 @@ async def playback_state() -> dict:
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
 
-@refresh_token
-async def poll_playback_state(db_session: Session = Depends(get_db)) -> None:
+async def poll_playback_state(access_token: str, db_session: Session) -> None:
     """
     Continuously poll the playback state and update the database with the current track information.
 
     Args:
-        db_session (Session): SQLAlchemy database session.
+        access_token (str): The Spotify access token.
+        db_session (Session): SQLAlchemy database session used for database operations.
     """
     while True:
         try:
-            access_token, _ = token_manager.get_tokens()
-            state = await playback_state(access_token)
+            state = await playback_state(db_session)
             await handle_playing_track(state, db_session, access_token)
         except HTTPException as exc:
             print(f"Error fetching playback state: {exc}")
@@ -78,16 +81,15 @@ async def poll_playback_state(db_session: Session = Depends(get_db)) -> None:
         await asyncio.sleep(1)
 
 
-@refresh_token
-async def handle_playing_track(state: dict, db_session: Session = Depends(get_db)) -> None:
+async def handle_playing_track(state: dict, db_session: Session, access_token: str) -> None:
     """
     Handle the logic for a track that is currently playing.
 
     Args:
-        state (dict): Current playback state.
-        db_session (Session): SQLAlchemy database session.
+        state (dict): The current playback state from Spotify.
+        db_session (Session): SQLAlchemy database session used for database operations.
+        access_token (str): The Spotify access token.
     """
-    access_token, _ = token_manager.get_tokens()
     progress, duration = state["progress_ms"], state["item"]["duration_ms"]
     ten_seconds_passed, ten_seconds_left = (
         progress >= 10000,
@@ -103,52 +105,43 @@ async def handle_playing_track(state: dict, db_session: Session = Depends(get_db
             await create_track_entry(track_title, track_id, db_session)
 
 
-async def create_track_entry(
-    track_title: str, track_id: int, db_session: Session = Depends(get_db)
-) -> None:
+async def create_track_entry(track_title: str, track_id: int, db_session: Session) -> None:
     """
     Create a new track entry in the database.
 
     Args:
         track_title (str): The title of the track.
-        track_id (int): The spotify_id of the track.
-        db_session (Session): SQLAlchemy database session.
+        track_id (int): The Spotify ID of the track.
+        db_session (Session): SQLAlchemy database session used for database operations.
     """
-    try:
-        track = Track(title=track_title, spotify_id=track_id, listened_count=0)
-        db_session.add(track)
-        db_session.commit()
-    except SQLAlchemyError:
-        db_session.rollback()
-    finally:
-        db_session.close()
+    track = Track(title=track_title, spotify_id=track_id, listened_count=0)
+    db_session.add(track)
+    db_session.commit()
 
 
-@refresh_token
-async def update_track_listened_count(track: Track, db_session: Session = Depends(get_db)) -> None:
+async def update_track_listened_count(track: Track, db_session: Session, access_token: str) -> None:
     """
     Update the listened count for a track in the database.
 
     Args:
-        track (Track): The track instance.
-        db_session (Session): SQLAlchemy database session.
+        track (Track): The track instance to update.
+        db_session (Session): SQLAlchemy database session used for database operations.
+        access_token (str): The Spotify access token.
     """
-    access_token, _ = token_manager.get_tokens()
     track.listened_count += 1
     db_session.commit()
     db_session.close()
     await wait_for_song_change(access_token, track.title)
 
 
-@refresh_token
-async def wait_for_song_change(current_track_title: str) -> None:
+async def wait_for_song_change(access_token: str, current_track_title: str) -> None:
     """
     Wait until the currently playing song changes.
 
     Args:
-        current_track_title (str): The current track title.
+        access_token (str): The Spotify access token.
+        current_track_title (str): The title of the currently playing track.
     """
-    access_token, _ = token_manager.get_tokens()
     while True:
         state = await playback_state(access_token)
         new_track_title = state["item"]["name"]
@@ -157,7 +150,6 @@ async def wait_for_song_change(current_track_title: str) -> None:
         await asyncio.sleep(1)
 
 
-@refresh_token
 @router.post("/poll-tracks")
 async def poll_tracks(
     background_tasks: BackgroundTasks, db_session: Session = Depends(get_db)
@@ -167,32 +159,34 @@ async def poll_tracks(
 
     Args:
         background_tasks (BackgroundTasks): FastAPI's background task manager.
-        db_session (Session): SQLAlchemy database session.
+        db_session (Session): SQLAlchemy database session used for database operations.
 
     Returns:
-        dict: Confirmation message.
+        dict: A confirmation message indicating that the background task has started.
     """
-    access_token, _ = token_manager.get_tokens()
-    background_tasks.add_task(poll_playback_state, access_token, db_session)
+    token = get_token(db_session)
+    background_tasks.add_task(poll_playback_state, token["access_token"], db_session)
     return {"message": "Playback state polling started in the background."}
 
 
 @router.get("/recently-played-tracks")
-async def get_recently_played(limit: int = 1) -> dict:
+async def get_recently_played(db_session: Session = Depends(get_db), limit: int = 1) -> dict:
     """
     Fetch the recently played tracks from the user's Spotify account.
 
     Args:
+        db_session (Session): The database session dependency used to obtain headers.
         limit (int): Number of recently played tracks to fetch. Default is 1.
 
     Returns:
-        dict: JSON response with the recently played tracks.
+        dict: A JSON response containing the recently played tracks.
 
     Raises:
-        HTTPException: If the Spotify API response is unsuccessful.
+        HTTPException: If the Spotify API response is unsuccessful, an HTTPException is raised
+        with the status code and error details from the response.
     """
     url = f"{config['SPOTIFY_API_URL']}/me/player/recently-played?limit={limit}"
-    headers = get_spotify_headers()
+    headers = await get_spotify_headers(db_session)
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
         if response.status_code == 200:
