@@ -1,0 +1,19 @@
+name: Run format.sh script
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run format.sh script
+        run: |
+          chmod +x server/format.sh  # Make sure the script is executable
+          ./server/format.sh
