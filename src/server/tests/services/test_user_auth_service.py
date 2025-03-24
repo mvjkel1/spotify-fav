@@ -1,15 +1,10 @@
 import pytest
+from app.services.user_auth_service import create_refresh_token, get_current_user
 from fastapi import HTTPException, status
 
-from app.services.user_auth_service import create_refresh_token, get_current_user
+from ..fixtures.constants import USER_EXAMPLE_DB
+from ..fixtures.services.user_auth_service_fixtures import mock_config_env
 from ..utils.utils import get_model_attributes
-
-from ..fixtures.constants import (
-    USER_EXAMPLE_DB,
-)
-from ..fixtures.services.user_auth_service_fixtures import (
-    mock_config_env,
-)
 
 
 @pytest.mark.asyncio
