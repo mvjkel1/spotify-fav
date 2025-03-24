@@ -106,9 +106,7 @@ async def callback(request: Request, db_session: Session = Depends(get_db)):
     """
     code = request.query_params.get("code")
     if not code:
-        raise HTTPException(
-            status_code=400, detail="Authorization code not found in request"
-        )
+        raise HTTPException(status_code=400, detail="Authorization code not found in request")
     try:
         auth_header = base64.b64encode(
             f"{config['CLIENT_ID']}:{config['CLIENT_SECRET']}".encode()
