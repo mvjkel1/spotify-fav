@@ -4,7 +4,7 @@ import urllib.parse
 import httpx
 from fastapi import HTTPException, status
 from fastapi.responses import RedirectResponse
-from jose import JWTError, jwt
+from jose import jwt
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from app.services.spotify_token_manager import (
@@ -116,7 +116,7 @@ async def handle_spotify_callback(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve tokens from Spotify",
         )
-    current_user = get_current_user(jwt_token, db_session)
+    current_user = await get_current_user(jwt_token, db_session)
     await save_spotify_token(access_token, refresh_token, expires_in, current_user.id, db_session)
     spotify_user = await get_spotify_user(current_user.id, db_session)
     current_user.spotify_uid = spotify_user.get("id")

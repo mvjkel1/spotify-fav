@@ -31,7 +31,7 @@ async def register_user(user: UserRegister, db_session: AsyncSession = Depends(a
     Returns:
         dict: A dictionary containing a success message and the email of the newly registered user.
     """
-    return await handle_user_register(db_session, user)
+    return await handle_user_register(user, db_session)
 
 
 @router.post("/token")
