@@ -14,7 +14,7 @@ async def get_current_user(db_session: Session) -> dict:
     Retrieve the current user's Spotify profile information.
 
     Args:
-        db_session (Session): SQLAlchemy session to get Spotify headers.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         dict: A dictionary containing the current user's profile information.
@@ -39,7 +39,7 @@ async def get_current_user_id(db_session: Session) -> str:
     Retrieve the current user's Spotify user ID.
 
     Args:
-        db_session (Session): SQLAlchemy session to get Spotify headers.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         str: The current user's Spotify user ID.
@@ -81,7 +81,7 @@ async def handle_spotify_callback(code: str, db_session: Session) -> RedirectRes
 
     Args:
         code (str): The authorization code returned from Spotify.
-        db_session (Session): SQLAlchemy session for token saving.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         RedirectResponse: Redirect to a specified URL after successful token retrieval.
@@ -177,7 +177,7 @@ def is_user_authorized(db_session: Session) -> bool:
     Check if the user is authorized based on the presence of a token in the database.
 
     Args:
-        db_session (Session): The current database session.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         bool: True if user is authorized, False otherwise.

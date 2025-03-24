@@ -13,7 +13,7 @@ async def get_current_track(db_session: Session) -> dict:
     Retrieve the current track the user is listening to on Spotify.
 
     Args:
-        db_session (Session): SQLAlchemy session to get Spotify headers.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         dict: A dictionary containing information about the current track.
@@ -45,7 +45,7 @@ async def poll_playback_state(db_session: Session) -> None:
     Poll the playback state periodically in the background and handle the current playing track.
 
     Args:
-        db_session (Session): The database session to use for querying or updating the database.
+        db_session (Session): The SQLAlchemy session to interact with the database.
     """
     while True:
         state = await get_playback_state(db_session)
@@ -58,7 +58,7 @@ async def get_recently_played_tracks(db_session: Session, limit: int = 1) -> dic
     Retrieve the user's recently played tracks from Spotify.
 
     Args:
-        db_session (Session): SQLAlchemy session to get Spotify headers.
+        db_session (Session): The SQLAlchemy session to interact with the database.
         limit (int, optional): The number of recent tracks to retrieve. Defaults to 1.
 
     Returns:
@@ -91,7 +91,7 @@ async def get_playback_state(db_session: Session) -> dict:
     Retrieve the user's current playback state from Spotify.
 
     Args:
-        db_session (Session): SQLAlchemy session to get Spotify headers.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         dict: A dictionary containing the current playback state information.
@@ -124,7 +124,7 @@ async def handle_playing_track(state: dict, db_session: Session) -> None:
 
     Args:
         state (dict): The current playback state returned from Spotify.
-        db_session (Session): The database session to use for querying or updating the database.
+        db_session (Session): The SQLAlchemy session to interact with the database.
     """
     progress, duration, track_title, track_id = extract_track_data(state)
     ten_seconds_passed, ten_seconds_left = check_track_progress(progress, duration)
@@ -182,7 +182,7 @@ def get_track_from_db(db_session: Session, track_title: str) -> Track | None:
     Query the database for a track by its title.
 
     Args:
-        db_session (Session): The database session to use for querying the Track model.
+        db_session (Session): The SQLAlchemy session to interact with the database.
         track_title (str): The title of the track to search for.
 
     Returns:
@@ -209,7 +209,7 @@ async def process_playing_track(
         ten_seconds_left (bool): True if 10 seconds or less remain in the track.
         track_title (str): The title of the currently playing track.
         track_id (str): The Spotify ID of the currently playing track.
-        db_session (Session): The database session to use for updates.
+        db_session (Session): The SQLAlchemy session to interact with the database.
     """
     if track_db and ten_seconds_left:
         await update_track_listened_count(track_db, db_session)
@@ -224,7 +224,7 @@ async def create_track_entry(track_title: str, track_id: str, db_session: Sessio
     Args:
         track_title (str): The title of the track.
         track_id (str): The Spotify ID of the track.
-        db_session (Session): The database session to use for adding the track.
+        db_session (Session): The SQLAlchemy session to interact with the database.
     """
     track = Track(title=track_title, spotify_id=track_id, listened_count=0)
     db_session.add(track)
@@ -237,11 +237,11 @@ async def update_track_listened_count(track: Track, db_session: Session) -> None
 
     Args:
         track (Track): The track object to update.
-        db_session (Session): The database session to use for committing changes.
+        db_session (Session): The SQLAlchemy session to interact with the database.
     """
     track.listened_count += 1
     db_session.commit()
-    await wait_for_song_change(db_session, track.title)
+    await wait_for_song_change(track.title, db_session)
 
 
 async def wait_for_song_change(db_session: Session, current_track_title: str) -> None:
@@ -249,8 +249,8 @@ async def wait_for_song_change(db_session: Session, current_track_title: str) ->
     Continuously check if the current song has changed, and wait until it does.
 
     Args:
-        db_session (Session): The database session to use for retrieving playback state.
         current_track_title (str): The title of the currently playing track.
+        db_session (Session): The SQLAlchemy session to interact with the database.
     """
     while True:
         state = await get_playback_state(db_session)
@@ -265,7 +265,7 @@ def fetch_listened_tracks(db_session: Session) -> list[Track]:
     Fetch tracks from the database that have been listened to (i.e., have a nonzero listened count).
 
     Args:
-        db_session (Session): SQLAlchemy session used for database operations.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Raises:
         HTTPException: Listened tracks were not found.

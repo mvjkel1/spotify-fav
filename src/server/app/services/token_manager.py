@@ -11,7 +11,7 @@ class RefreshTokenError(Exception):
     """Custom exception for refresh token-related errors."""
 
 
-def save_token(access_token: str, refresh_token: str, expires_in: int, db_session: Session) -> None:
+def save_token(access_token: str, refresh_token: str, expires_in: int, db_session: Session):
     """
     Save or update the access and refresh tokens in the database.
 
@@ -19,10 +19,7 @@ def save_token(access_token: str, refresh_token: str, expires_in: int, db_sessio
         access_token (str): The new access token.
         refresh_token (str): The refresh token.
         expires_in (int): Time in seconds until the access token expires.
-        db_session (Session): The current database session.
-
-    Returns:
-        None
+        db_session (Session): The SQLAlchemy session to interact with the database.
     """
     expires_at = time() + expires_in
     token = db_session.query(AccessToken).first()
@@ -45,10 +42,10 @@ async def get_token(db_session: Session) -> dict[str, str]:
     Retrieve the current access token if it is still valid, or refresh it.
 
     Args:
-        db_session (Session): The current database session.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
-        dict: A dictionary containing the token data.
+        dict[str, str]: A dictionary containing the token data.
 
     Raises:
         HTTPException: If the token does not exist or refresh fails.
@@ -60,7 +57,7 @@ async def get_token(db_session: Session) -> dict[str, str]:
             "refresh_token": token.refresh_token,
             "expires_at": token.expires_at,
         }
-    return await handle_token_refresh(db_session, token.refresh_token)
+    return await handle_token_refresh(token.refresh_token, db_session)
 
 
 def get_token_from_db(db_session: Session) -> AccessToken:
@@ -68,7 +65,7 @@ def get_token_from_db(db_session: Session) -> AccessToken:
     Retrieve the current token from the database.
 
     Args:
-        db_session (Session): The current database session.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         AccessToken: The token object from the database.
@@ -98,13 +95,13 @@ def is_token_expired(token: AccessToken) -> bool:
     return token.expires_at < time()
 
 
-async def handle_token_refresh(db_session: Session, refresh_token: str) -> dict[str, str]:
+async def handle_token_refresh(refresh_token: str, db_session: Session) -> dict[str, str]:
     """
     Handle the token refresh process.
 
     Args:
-        db_session (Session): The current database session.
         refresh_token (str): The refresh token used to get a new access token.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         dict[str, str]: The refreshed token data.
@@ -113,20 +110,20 @@ async def handle_token_refresh(db_session: Session, refresh_token: str) -> dict[
         HTTPException: If the refresh process fails.
     """
     try:
-        return await refresh_access_token(db_session, refresh_token)
+        return await refresh_access_token(refresh_token, db_session)
     except RefreshTokenError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token refresh failed: {str(exc)}"
         ) from exc
 
 
-async def refresh_access_token(db_session: Session, refresh_token: str) -> dict[str, str]:
+async def refresh_access_token(refresh_token: str, db_session: Session) -> dict[str, str]:
     """
     Refresh the access token using the refresh token.
 
     Args:
-        db_session (Session): The current database session.
         refresh_token (str): The refresh token used to get a new access token.
+        db_session (Session): The SQLAlchemy session to interact with the database.
 
     Returns:
         dict[str, str]: A dictionary containing the refreshed token data.
