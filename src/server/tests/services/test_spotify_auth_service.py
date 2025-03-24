@@ -6,8 +6,9 @@ from httpx import HTTPStatusError
 from app.services.spotify_auth_service import get_spotify_user
 from ..fixtures.constants import GET_CURRENT_USER_URL, SPOTIFY_HEADERS_EXAMPLE, USER_ID_EXAMPLE
 from ..fixtures.services.spotify_auth_service_fixtures import (
-    mock_get_spotify_headers,
     mock_async_client_get,
+    mock_config_env,
+    mock_get_spotify_headers,
 )
 
 from ..conftest import db_session
