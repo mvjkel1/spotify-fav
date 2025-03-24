@@ -11,7 +11,7 @@ EOF
 
 function run_server() {
     echo "Starting API server..."
-    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    uvicorn app.main:app --reload
 }
 
 function run_tests() {
