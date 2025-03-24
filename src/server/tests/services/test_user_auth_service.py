@@ -60,8 +60,9 @@ async def test_get_current_user_id_failure(mock_get_current_user, db_session):
     assert exc.value.detail == "Failed to fetch current user ID"
 
 
-def test_generate_spotify_login_url(mock_config_env, mock_generate_random_string):
-    result = generate_spotify_login_url()
+@pytest.mark.asyncio
+async def test_generate_spotify_login_url(mock_config_env, mock_generate_random_string):
+    result = await generate_spotify_login_url()
     assert result == {
         "login_url": "SPOTIFY_AUTH_URL?response_type=code&client_id=CLIENT_ID&scope=SPOTIFY_API_SCOPES&redirect_uri=REDIRECT_URI&state=str1ng"
     }
@@ -71,9 +72,8 @@ def test_generate_spotify_login_url(mock_config_env, mock_generate_random_string
 async def test_handle_spotify_callback_missing_code(db_session):
     with pytest.raises(HTTPException) as exc:
         await handle_spotify_callback("", db_session)
-
     assert exc.value.status_code == status.HTTP_400_BAD_REQUEST
-    assert exc.value.detail == "Authorization code not found in request"
+    assert exc.value.detail == "Authorization code missing"
 
 
 @pytest.mark.asyncio
@@ -104,7 +104,7 @@ async def test_handle_spotify_callback_invalid_token_response(mock_async_client_
     with pytest.raises(HTTPException) as exc:
         await handle_spotify_callback("valid_code", db_session)
     assert exc.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-    assert exc.value.detail == "Failed to retrieve tokens from Spotify API"
+    assert exc.value.detail == "Failed to retrieve tokens from Spotify"
 
 
 @pytest.mark.asyncio
@@ -126,4 +126,4 @@ async def test_handle_spotify_callback_spotify_request_error(mock_async_client_p
     with pytest.raises(HTTPException) as exc:
         await handle_spotify_callback("valid_code", db_session)
     assert exc.value.status_code == status.HTTP_502_BAD_GATEWAY
-    assert "Error while requesting from Spotify" in exc.value.detail
+    assert "Network error occurred: Request failed" in exc.value.detail

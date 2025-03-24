@@ -113,8 +113,13 @@ async def handle_spotify_callback(code: str, db_session: Session) -> RedirectRes
             )
         save_token(access_token, refresh_token, expires_in, db_session)
         return RedirectResponse(url=config["CALLBACK_REDIRECT_URL"])
-    except (httpx.HTTPStatusError, httpx.RequestError) as exc:
-        status_code = getattr(exc.response, "status_code", status.HTTP_502_BAD_GATEWAY)
+    except httpx.HTTPStatusError as exc:
         raise HTTPException(
-            status_code=status_code, detail=f"Error occurred: {exc}"
+            status_code=exc.response.status_code,
+            detail=f"HTTP error occurred: {exc}"
+        ) from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Network error occurred: {exc}"
         ) from exc
