@@ -7,10 +7,7 @@ from ..constants import ENV_CONFIG_EXAMPLE
 
 @pytest.fixture(scope="function")
 def mock_generate_spotify_login_url():
-    with patch(
-        "app.routers.user_auth_router.generate_spotify_login_url",
-        new_callable=AsyncMock,
-    ) as mock:
+    with patch("app.routers.user_auth_router.generate_spotify_login_url") as mock:
         yield mock
 
 
