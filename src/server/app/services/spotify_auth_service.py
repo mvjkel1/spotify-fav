@@ -186,20 +186,3 @@ async def exchange_token_with_spotify(form_data: dict, headers: dict) -> dict[st
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Network error occurred: {exc}"
         ) from exc
-
-
-def is_spotify_user_authorized(db_session: AsyncSession) -> bool:
-    """
-    Check if the user is authorized based on the presence of a token in the database.
-
-    Args:
-        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
-
-    Returns:
-        bool: True if user is authorized, False otherwise.
-    """
-    try:
-        get_spotify_token_from_db(db_session)
-    except HTTPException:
-        return False
-    return True
