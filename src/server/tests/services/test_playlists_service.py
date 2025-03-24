@@ -5,6 +5,7 @@ import httpx
 import pytest
 from app.db.models import Track
 from app.services.playlists_service import (
+    cache_playlist_tracks,
     fetch_listened_tracks,
     get_playlists_from_spotify,
     process_playlist_creation,
@@ -112,3 +113,38 @@ async def test_process_playlist_creation_failure(
         headers=SPOTIFY_HEADERS_EXAMPLE,
         json={"uris": ["spotify:track:10", "spotify:track:20"]},
     )
+
+
+@pytest.mark.asyncio
+async def test_cache_playlist_tracks(db_session, mock_get_spotify_headers, mock_async_client_get):
+    playlists = [
+        {"uri": "spotify:playlist:1"},
+        {"uri": "spotify:playlist:2"},
+    ]
+    mocked_responses = [
+        {
+            "tracks": {
+                "items": [
+                    {"track": {"name": "Track A"}},
+                    {"track": {"name": "Track B"}},
+                ]
+            }
+        },
+        {
+            "tracks": {
+                "items": [
+                    {"track": {"name": "Track C"}},
+                    {"track": {"name": "Track D"}},
+                ]
+            }
+        },
+    ]
+
+    mock_request = httpx.Request("GET", "mock_request")
+    mock_async_client_get.side_effect = [
+        httpx.Response(200, json=mocked_response, request=mock_request)
+        for mocked_response in mocked_responses
+    ]
+    result = await cache_playlist_tracks(playlists, db_session)
+    assert result == {"1": {"Track A", "Track B"}, "2": {"Track D", "Track C"}}
+    assert mock_async_client_get.call_count == len(playlists)
