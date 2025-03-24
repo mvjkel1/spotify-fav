@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -17,7 +19,10 @@ engine = create_engine(
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def test_lifespan(app: FastAPI):
+    yield
 
 
 @pytest.fixture()
@@ -26,6 +31,7 @@ def db_session():
     connection = engine.connect()
     transaction = connection.begin()
     session = TestingSessionLocal(bind=connection)
+    Base.metadata.create_all(bind=connection)
     yield session
     session.close()
     transaction.rollback()
@@ -43,5 +49,6 @@ def test_client(db_session):
             db_session.close()
 
     app.dependency_overrides[get_db] = override_get_db
+    app.router.lifespan_context = test_lifespan
     with TestClient(app) as test_client:
         yield test_client

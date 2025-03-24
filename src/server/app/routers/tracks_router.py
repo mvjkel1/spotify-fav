@@ -1,14 +1,17 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-
 from app.db.database import get_db
 from app.services.tracks_service import (
     get_current_track,
+    get_current_user_id,
     get_playback_state,
     get_recently_played_tracks,
-    poll_playback_state,
+    get_user_polling_status,
+    start_polling_tracks,
+    stop_polling_tracks,
+    update_polling_status,
 )
 from app.services.user_auth_service import is_user_authorized
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["tracks"], prefix="/tracks")
 
@@ -44,14 +47,21 @@ async def poll(
     Returns:
         dict[str, str]: A message indicating that polling has started.
     """
-    # Workaround to don't add background tasks if there was an exception within poll_playback_state func call,
-    # it should be improved in the future
-    if is_user_authorized(db_session):
-        background_tasks.add_task(poll_playback_state, db_session)
-        return {"message": "Playback state polling started in the background."}
-    raise HTTPException(
-        status.HTTP_401_UNAUTHORIZED, "Unauthorized - to start the polling you have to login first."
-    )
+    return await start_polling_tracks(background_tasks, db_session)
+
+
+@router.post("/stop-polling")
+async def stop_polling(db_session: Session = Depends(get_db)) -> dict[str, str]:
+    """
+    Stop the playback state polling.
+
+    Args:
+        db_session (Session): The SQLAlchemy session to interact with the database.
+
+    Returns:
+        dict[str, str]: A message indicating that polling has been stopped.
+    """
+    return await stop_polling_tracks(db_session)
 
 
 @router.get("/recently-played")

@@ -1,12 +1,12 @@
 import asyncio
 
 import httpx
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
-
-from app.db.models import Track
+from app.db.models import Track, UserPollingStatus
 from app.services.token_manager import get_spotify_headers
+from app.services.user_auth_service import get_current_user_id, is_user_authorized
 from app.services.utils import config
+from fastapi import BackgroundTasks, HTTPException, status
+from sqlalchemy.orm import Session
 
 
 async def get_current_track(db_session: Session) -> dict:
@@ -48,9 +48,13 @@ async def poll_playback_state(db_session: Session) -> None:
     Args:
         db_session (Session): The SQLAlchemy session to interact with the database.
     """
-    while True:
+    user_id = await get_current_user_id(db_session)
+    continue_polling = True
+    while continue_polling:
         state = await get_playback_state(db_session)
         await handle_playing_track(state, db_session)
+        current_user_polling_status = await get_user_polling_status(user_id, db_session)
+        continue_polling = current_user_polling_status.is_polling
         await asyncio.sleep(1)
 
 
@@ -261,6 +265,47 @@ async def wait_for_song_change(current_track_title: str, db_session: Session) ->
         await asyncio.sleep(1)
 
 
+async def update_polling_status(
+    db_session: Session, enable: bool = True, user_id: int = None
+) -> None:
+    """
+    Update the polling status for a specific user or all users.
+
+    If a `user_id` is provided, the function updates or creates the polling status for that user.
+    If no `user_id` is provided, the function updates the polling status for all users.
+
+    Args:
+        db_session (Session): The SQLAlchemy session to interact with the database.
+        enable (bool): Whether to enable or disable polling. Default is True.
+        user_id (int, optional): The ID of the user to update. If None, updates all users.
+    """
+    if user_id:
+        user_polling_status = db_session.query(UserPollingStatus).filter_by(user_id=user_id).first()
+
+        if not user_polling_status:
+            user_polling_status = UserPollingStatus(user_id=user_id)
+            db_session.add(user_polling_status)
+
+        user_polling_status.is_polling = enable
+    else:
+        db_session.query(UserPollingStatus).update({"is_polling": enable})
+    db_session.commit()
+
+
+async def get_user_polling_status(user_id: int, db_session: Session) -> UserPollingStatus:
+    """
+    Retrieve the polling status for the currently logged-in user.
+
+    Args:
+        user_id (int): The user ID to get the polling status of.
+        db_session (Session): The SQLAlchemy session to interact with the database.
+
+    Returns:
+        UserPollingStatus: The polling status record for the user, or None if it does not exist.
+    """
+    return db_session.query(UserPollingStatus).filter_by(user_id=user_id).first()
+
+
 def fetch_listened_tracks(db_session: Session) -> list[Track]:
     """
     Fetch tracks from the database that have been listened to (i.e., have a nonzero listened count).
@@ -281,3 +326,65 @@ def fetch_listened_tracks(db_session: Session) -> list[Track]:
             detail="No tracks you have listened to were found.",
         )
     return tracks_db
+
+
+async def start_polling_tracks(
+    background_tasks: BackgroundTasks, db_session: Session
+) -> dict[str, str]:
+    """
+     Handle the logic for starting polling of tracks in the background.
+
+     Args:
+         background_tasks (BackgroundTasks): The background task manager.
+         db_session (Session): The SQLAlchemy session to interact with the database.
+
+    Returns:
+         dict[str, str]: A message indicating that polling has started.
+
+     Raises:
+         HTTPException: User is not authorized or polling is already active.
+    """
+    user_id = await get_current_user_id(db_session)
+    current_user_polling_status = await get_user_polling_status(user_id, db_session)
+    if current_user_polling_status.is_polling:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "The polling session for current user has been already started.",
+        )
+    if is_user_authorized(db_session):
+        await update_polling_status(db_session, enable=True, user_id=user_id)
+        background_tasks.add_task(poll_playback_state, db_session)
+        return {"message": "Playback state polling started in the background."}
+    raise HTTPException(
+        status.HTTP_401_UNAUTHORIZED, "Unauthorized - to start the polling you have to login first."
+    )
+
+
+async def stop_polling_tracks(db_session: Session) -> dict[str, str]:
+    """
+    Handle the logic for stopping the tracks polling process.
+
+    Args:
+        background_tasks (BackgroundTasks): The background task manager.
+        db_session (Session): The SQLAlchemy session to interact with the database.
+
+    Returns:
+        dict[str, str]: A message indicating that polling has been stopped.
+
+    Raises:
+        HTTPException: User is not authorized or polling is not active.
+    """
+    user_id = await get_current_user_id(db_session)
+    current_user_polling_status = await get_user_polling_status(user_id, db_session)
+    if not current_user_polling_status.is_polling:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "The polling session for current user was not started.",
+        )
+    if is_user_authorized(db_session):
+        await update_polling_status(db_session, enable=False, user_id=user_id)
+        return {"message": "Polling session has been stopped successfully"}
+    raise HTTPException(
+        status.HTTP_401_UNAUTHORIZED,
+        "Unauthorized - to stop polling you have to login first.",
+    )

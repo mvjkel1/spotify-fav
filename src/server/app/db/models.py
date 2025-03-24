@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Table
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 
 from app.db.database import Base
@@ -15,7 +15,7 @@ playlist_track_association_table = Table(
 
 class Track(Base):
     """
-    Represents a music track in the API.
+    Represents a music track in the DB.
 
     Attributes:
         id (int): The unique identifier for the track.
@@ -38,7 +38,7 @@ class Track(Base):
 
 class Playlist(Base):
     """
-    Represents a playlist in the API.
+    Represents a playlist in the DB.
 
     Attributes:
         id (int): The unique identifier for the playlist.
@@ -72,3 +72,11 @@ class AccessToken(Base):
     access_token = Column(String, nullable=False)
     refresh_token = Column(String, nullable=False)
     expires_at = Column(Float, nullable=False)
+
+
+class UserPollingStatus(Base):
+    __tablename__ = "user_polling_status"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, unique=True, nullable=False)
+    is_polling = Column(Boolean, default=False)
