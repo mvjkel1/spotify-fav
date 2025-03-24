@@ -132,7 +132,6 @@ async def test_get_playback_state_failure(
     assert "Failed to fetch playback state" in exc.value.detail
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "expected_args",
     [
@@ -146,6 +145,7 @@ async def test_get_playback_state_failure(
         }
     ],
 )
+@pytest.mark.asyncio
 async def test_handle_playing_track_success(db_session, mock_process_playing_track, expected_args):
     state = {
         "is_playing": True,
@@ -200,6 +200,7 @@ async def test_fetch_listened_tracks_success(db_session: AsyncSession):
     assert fetched_track.spotify_id == test_track.spotify_id
 
 
+@pytest.mark.asyncio
 async def test_fetch_listened_tracks_failure(db_session):
     test_track = Track(title="Test Track", spotify_id="test_id")
     db_session.add(test_track)

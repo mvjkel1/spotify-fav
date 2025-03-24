@@ -38,6 +38,7 @@ from ..fixtures.services.spotify_token_manager_fixtures import (
         ),
     ],
 )
+@pytest.mark.asyncio
 async def test_save_token(
     db_session,
     request,
@@ -60,6 +61,7 @@ async def test_save_token(
         assert token.expires_at > time()
 
 
+@pytest.mark.asyncio
 async def test_get_spotify_token_from_db_not_found(db_session):
     with pytest.raises(HTTPException) as exc:
         await get_spotify_token_from_db(user_id=1, db_session=db_session)
@@ -82,7 +84,6 @@ def test_is_spotify_token_expired(request, token_fixture, expected_expired):
     assert token_fixture.is_expired() == expected_expired
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "mock_return_value, side_effect, expected_access, expected_refresh, expected_exception",
     [
@@ -106,6 +107,7 @@ def test_is_spotify_token_expired(request, token_fixture, expected_expired):
         ),
     ],
 )
+@pytest.mark.asyncio
 async def test_handle_spotify_token_refresh(
     db_session,
     mock_refresh_access_token,
@@ -130,7 +132,6 @@ async def test_handle_spotify_token_refresh(
         assert new_token["refresh_token"] == expected_refresh
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "mock_response_data, side_effect, expected_access, expected_exception",
     [
@@ -155,6 +156,7 @@ async def test_handle_spotify_token_refresh(
         (None, TimeoutException("Request timeout"), None, HTTPException),
     ],
 )
+@pytest.mark.asyncio
 async def test_refresh_spotify_access_token(
     db_session,
     mock_async_client_post,

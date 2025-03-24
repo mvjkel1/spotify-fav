@@ -127,7 +127,6 @@ async def test_process_playlist_creation_failure(
     assert exc.value.detail == ("No tracks you have listened to were found.")
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "playlists, mocked_responses, expected_result",
     [
@@ -155,6 +154,7 @@ async def test_process_playlist_creation_failure(
         )
     ],
 )
+@pytest.mark.asyncio
 async def test_cache_playlist_tracks(
     playlists,
     mocked_responses,

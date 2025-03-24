@@ -13,7 +13,7 @@ from tests.fixtures.constants import USER_SCHEMA_EXAMPLE
 
 SQLITE_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
-async_engine = create_async_engine(SQLITE_DATABASE_URL, echo=False)
+async_engine = create_async_engine(SQLITE_DATABASE_URL, echo=False, future=True)
 
 TestingAsyncSessionLocal = sessionmaker(
     async_engine,
@@ -49,7 +49,7 @@ def mock_current_user():
     return USER_SCHEMA_EXAMPLE
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture
 async def test_client(db_session, mock_current_user):
     """Create a test client that uses the override_get_db fixture to return a session."""
 
