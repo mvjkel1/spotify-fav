@@ -13,7 +13,7 @@ from app.utils import config, get_spotify_headers
 router = APIRouter(tags=["music"])
 
 
-@router.get("/current_music")
+@router.get("/current-track")
 async def current_track(db_session: Session = Depends(get_db)) -> dict:
     """
     Fetch the currently playing track from the user's Spotify account.
@@ -37,7 +37,52 @@ async def current_track(db_session: Session = Depends(get_db)) -> dict:
         raise HTTPException(status_code=response.status_code, detail=response.text)
 
 
-@router.get("/playback_state")
+@router.post("/poll-tracks")
+async def poll_tracks(
+    background_tasks: BackgroundTasks, db_session: Session = Depends(get_db)
+) -> dict:
+    """
+    Start a background task to poll the playback state.
+
+    Args:
+        background_tasks (BackgroundTasks): FastAPI's background task manager.
+        db_session (Session): SQLAlchemy database session used for database operations.
+
+    Returns:
+        dict: A confirmation message indicating that the background task has started.
+    """
+    token = get_token(db_session)
+    background_tasks.add_task(poll_playback_state, token["access_token"], db_session)
+    return {"message": "Playback state polling started in the background."}
+
+
+@router.get("/recently-played-tracks")
+async def get_recently_played(
+    db_session: Session = Depends(get_db), limit: int = 1
+) -> dict:
+    """
+    Fetch the recently played tracks from the user's Spotify account.
+
+    Args:
+        db_session (Session): The database session dependency used to obtain headers.
+        limit (int): Number of recently played tracks to fetch. Default is 1.
+
+    Returns:
+        dict: A JSON response containing the recently played tracks.
+
+    Raises:
+        HTTPException: If the Spotify API response is unsuccessful, an HTTPException is raised
+        with the status code and error details from the response.
+    """
+    url = f"{config['SPOTIFY_API_URL']}/me/player/recently-played?limit={limit}"
+    headers = await get_spotify_headers(db_session)
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=headers)
+        if response.status_code == status.HTTP_200_OK:
+            return response.json()
+        raise HTTPException(status_code=response.status_code, detail=response.text)
+
+
 async def playback_state(db_session: Session = Depends(get_db)) -> dict:
     """
     Fetch the current playback state from the user's Spotify account.
@@ -154,49 +199,3 @@ async def wait_for_song_change(access_token: str, current_track_title: str) -> N
         if new_track_title != current_track_title:
             break
         await asyncio.sleep(1)
-
-
-@router.post("/poll-tracks")
-async def poll_tracks(
-    background_tasks: BackgroundTasks, db_session: Session = Depends(get_db)
-) -> dict:
-    """
-    Start a background task to poll the playback state.
-
-    Args:
-        background_tasks (BackgroundTasks): FastAPI's background task manager.
-        db_session (Session): SQLAlchemy database session used for database operations.
-
-    Returns:
-        dict: A confirmation message indicating that the background task has started.
-    """
-    token = get_token(db_session)
-    background_tasks.add_task(poll_playback_state, token["access_token"], db_session)
-    return {"message": "Playback state polling started in the background."}
-
-
-@router.get("/recently-played-tracks")
-async def get_recently_played(
-    db_session: Session = Depends(get_db), limit: int = 1
-) -> dict:
-    """
-    Fetch the recently played tracks from the user's Spotify account.
-
-    Args:
-        db_session (Session): The database session dependency used to obtain headers.
-        limit (int): Number of recently played tracks to fetch. Default is 1.
-
-    Returns:
-        dict: A JSON response containing the recently played tracks.
-
-    Raises:
-        HTTPException: If the Spotify API response is unsuccessful, an HTTPException is raised
-        with the status code and error details from the response.
-    """
-    url = f"{config['SPOTIFY_API_URL']}/me/player/recently-played?limit={limit}"
-    headers = await get_spotify_headers(db_session)
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url, headers=headers)
-        if response.status_code == status.HTTP_200_OK:
-            return response.json()
-        raise HTTPException(status_code=response.status_code, detail=response.text)
