@@ -2,12 +2,13 @@ import json
 
 import httpx
 import pytest
+from fastapi import HTTPException, status
+
 from app.services.playlists_service import (
     cache_playlist_tracks,
     get_playlists_from_spotify,
     process_playlist_creation,
 )
-from fastapi import HTTPException, status
 
 from ..conftest import db_session
 from ..fixtures.constants import (
@@ -24,6 +25,7 @@ from ..fixtures.services.playlists_service_fixtures import (
     mock_get_all_playlists,
     mock_get_current_user_id,
     mock_get_spotify_headers,
+    mock_redis,
     mock_sync_playlists,
 )
 
@@ -150,6 +152,7 @@ async def test_cache_playlist_tracks(
     db_session,
     mock_get_spotify_headers,
     mock_async_client_get,
+    mock_redis,
 ):
     mock_request = httpx.Request("GET", "mock_request")
     mock_async_client_get.side_effect = [

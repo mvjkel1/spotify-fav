@@ -1,6 +1,9 @@
 from time import time
 
 import pytest
+from fastapi import HTTPException, status
+from httpx import HTTPStatusError, Request, Response, TimeoutException
+
 from app.db.models import AccessToken
 from app.services.token_manager import (
     RefreshTokenError,
@@ -11,17 +14,15 @@ from app.services.token_manager import (
     refresh_access_token,
     save_token,
 )
-from fastapi import HTTPException, status
-from httpx import HTTPStatusError, Request, Response, TimeoutException
 
 from ..conftest import db_session
 from ..fixtures.services.token_manager_fixtures import (
     expired_token,
     mock_async_client_post,
+    mock_config_env,
     mock_get_token,
     mock_refresh_access_token,
     mock_token,
-    mock_config_env,
 )
 
 

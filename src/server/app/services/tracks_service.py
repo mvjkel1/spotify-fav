@@ -1,11 +1,12 @@
 import asyncio
 
 import httpx
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+
 from app.db.models import Track
 from app.services.token_manager import get_spotify_headers
 from app.services.utils import config
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
 
 
 async def get_current_track(db_session: Session) -> dict:

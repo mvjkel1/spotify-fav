@@ -1,3 +1,6 @@
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+
 from app.db.database import get_db
 from app.services.playlists_service import (
     get_all_playlists,
@@ -5,8 +8,6 @@ from app.services.playlists_service import (
     process_playlist_creation,
     retrieve_playlist_from_spotify_by_spotify_id,
 )
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["playlists"], prefix="/playlists")
 
