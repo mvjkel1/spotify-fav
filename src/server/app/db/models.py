@@ -48,6 +48,7 @@ class Playlist(Base):
 
     __tablename__ = "playlists"
     id = Column(Integer, primary_key=True)
+    spotify_id = Column(String, nullable=False)
     name = Column(String, nullable=False)
     tracks = relationship(
         "Track", secondary=playlist_track_association_table, back_populates="playlists"

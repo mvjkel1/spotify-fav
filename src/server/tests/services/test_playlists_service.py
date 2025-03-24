@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from app.db.models import Track
 from app.services.playlists_service import (
     fetch_listened_tracks,
-    get_my_playlists_from_spotify,
+    get_playlists_from_spotify,
     process_playlist_creation,
 )
 
@@ -30,7 +30,7 @@ from ..fixtures.services.playlists_service_fixtures import (
 
 
 @pytest.mark.asyncio
-async def test_get_my_playlists_from_spotify_success(
+async def test_get_playlists_from_spotify_success(
     db_session,
     mock_get_spotify_headers,
     mock_async_client_get,
@@ -42,13 +42,13 @@ async def test_get_my_playlists_from_spotify_success(
         json={"playlist1": "playlist1", "playlist2": "playlist2"},
         request=mock_request,
     )
-    response = await get_my_playlists_from_spotify(0, 10, db_session)
+    response = await get_playlists_from_spotify(0, 10, db_session)
     assert response == {"playlist1": "playlist1", "playlist2": "playlist2"}
     mock_async_client_get.assert_awaited_with(GET_MY_PLAYLISTS_URL, headers=SPOTIFY_HEADERS_EXAMPLE)
 
 
 @pytest.mark.asyncio
-async def test_get_my_playlists_from_spotify_failure(
+async def test_get_playlists_from_spotify_failure(
     db_session,
     mock_get_spotify_headers,
     mock_async_client_get,
@@ -61,7 +61,7 @@ async def test_get_my_playlists_from_spotify_failure(
         request=mock_request,
     )
     with pytest.raises(HTTPException) as exc:
-        await get_my_playlists_from_spotify(0, 10, db_session)
+        await get_playlists_from_spotify(0, 10, db_session)
     assert exc.value.status_code == status.HTTP_404_NOT_FOUND
     assert exc.value.detail == json.dumps({"ERROR": "ERROR"})
     mock_async_client_get.assert_awaited_with(GET_MY_PLAYLISTS_URL, headers=SPOTIFY_HEADERS_EXAMPLE)

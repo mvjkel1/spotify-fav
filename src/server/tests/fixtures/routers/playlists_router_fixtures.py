@@ -4,8 +4,8 @@ import pytest
 
 
 @pytest.fixture(scope="function")
-def mock_get_my_playlists_from_spotify():
-    with patch("app.routers.playlists_router.get_my_playlists_from_spotify") as mock:
+def mock_get_playlists_from_spotify():
+    with patch("app.routers.playlists_router.get_playlists_from_spotify") as mock:
         yield mock
 
 
