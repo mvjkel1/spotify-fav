@@ -23,10 +23,10 @@ jobs:
     - name: Install dependencies
       run: |
         . venv/bin/activate
-        pip install -r src/requirements.txt
+        pip install -r src/server/requirements.txt
         pip install pylint
 
     - name: Run Pylint
       run: |
         . venv/bin/activate
-        find src -name "*.py" | xargs pylint || true
+        find src/server -name "*.py" | xargs pylint || true
