@@ -30,4 +30,10 @@ Base = declarative_base()
 async def async_get_db():
     async_session = local_session()
     async with async_session as db:
-        yield db
+        try:
+            yield db
+        except Exception as exc:
+            await db.rollback()
+            raise
+        finally:
+            await db.close()
