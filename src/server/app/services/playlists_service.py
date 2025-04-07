@@ -325,7 +325,7 @@ async def cache_playlist_tracks(
         hash_key = f"playlist:{spotify_id}:{user_id}:hash"
         cached_tracks = await redis_client.get(cache_key)
         cached_hash = await redis_client.get(hash_key)
-        cached_tracks_set = set(cached_tracks.decode().split(",")) if cached_tracks else set()
+        cached_tracks_set = set(cached_tracks.split(")%(")) if cached_tracks else set()
         async with httpx.AsyncClient() as client:
             url = f"{config['SPOTIFY_API_URL']}/playlists/{spotify_id}"
             response = await client.get(url, headers=spotify_headers)
@@ -334,11 +334,11 @@ async def cache_playlist_tracks(
             tracks = {item["track"]["name"] for item in playlist_details}
 
         new_hash = generate_hash(tracks)
-        if cached_hash and cached_hash.decode() == new_hash:
+        if cached_hash and cached_hash == new_hash:
             playlist_tracks_cache[spotify_id] = cached_tracks_set
             return
 
-        await redis_client.set(cache_key, ",".join(tracks), ex=3600)
+        await redis_client.set(cache_key, ")%(".join(tracks), ex=3600)
         await redis_client.set(hash_key, new_hash, ex=3600)
         playlist_tracks_cache[spotify_id] = tracks
 
