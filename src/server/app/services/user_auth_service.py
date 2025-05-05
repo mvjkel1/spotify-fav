@@ -5,10 +5,9 @@ from app.db.database import async_get_db
 from app.db.models import User
 from app.db.schemas import TokenData, TokenSchema, UserRegister, UserSchema
 from app.services.utils import config
-from fastapi import Depends, HTTPException, Response, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from jwt.exceptions import InvalidTokenError
+from fastapi import Depends, HTTPException, Request, Response, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import ExpiredSignatureError, JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +28,7 @@ async def handle_user_register(
         user (UserRegister): The user registration data, including email and password.
 
     Raises:
-        HTTPException: If the email is already registered.
+        HTTPException: User with given email address is already registered.
 
     Returns:
         dict: A dictionary containing a success message and the email of the newly registered user.
@@ -81,21 +80,6 @@ def create_access_token(data: dict) -> str:
     )
 
 
-def create_refresh_token(data: dict) -> str:
-    """
-    Creates a refresh token with a predefined expiration time.
-
-    Args:
-        data (dict): The payload data to include in the token.
-
-    Returns:
-        str: The encoded refresh token.
-    """
-    return create_token(
-        data, config["SECRET_KEY"], timedelta(days=int(config["REFRESH_TOKEN_EXPIRE_DAYS"]))
-    )
-
-
 def hash_password(password: str) -> str:
     """
     Hashes a plain text password using the configured hashing algorithm.
@@ -124,7 +108,18 @@ async def get_user_by_email(db_session: AsyncSession, email: str) -> User | None
     return user.scalar_one_or_none()
 
 
-async def authenticate_user(db_session: AsyncSession, email: str, password: str):
+async def authenticate_user(db_session: AsyncSession, email: str, password: str) -> User | bool:
+    """
+    Authenticate a user based on the provided email and password.
+
+    Args:
+        db_session (AsyncSession): The SQLAlchemy session used to interact with the database.
+        email (str): The email address of the user.
+        password (str): The password provided by the user.
+
+    Returns:
+        User | bool: User object if the authentication is successful, otherwise False.
+    """
     user = await get_user_by_email(db_session, email)
     if not user:
         return False
@@ -147,7 +142,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return PWD_CONTEXT.verify(plain_password, hashed_password)
 
 
-async def verify_token(token: str):
+async def verify_token(token: str) -> TokenData | None:
     """
     Verifies and decodes a JWT token.
 
@@ -184,27 +179,54 @@ async def get_current_user(
     Raises:
         HTTPException: If the token is invalid, the user email is missing, or the user does not exist.
     """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(jwt_token, config["SECRET_KEY"], algorithms=config["ALGORITHM"])
-        user_email = payload.get("sub")
-        if user_email is None:
-            raise credentials_exception
-    except InvalidTokenError:
-        raise credentials_exception
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="JWT token has expired"
-        )
+    user_email = decode_jwt_token(jwt_token, config["SECRET_KEY"], config["ALGORITHM"])
     user = await get_user_by_email(db_session, user_email)
     if user is None:
-        raise credentials_exception
-
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
+
+
+def decode_jwt_token(token: str, secret_key: str, algorithm: str) -> str:
+    """
+    Decode a JWT token and extract the user email from the 'sub' claim.
+
+    Args:
+        token (str): The JWT token to decode.
+        secret_key (str): The secret key used to verify the token signature.
+        algorithm (str): The algorithm used for decoding the token.
+
+    Returns:
+        str: The user email extracted from the token's 'sub' claim.
+
+    Raises:
+        HTTPException: The token is invalid, expired, or missing required claims.
+    """
+    try:
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
+        user_email = payload.get("sub")
+        if not user_email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token payload missing 'sub' claim",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return user_email
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="JWT token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 async def get_current_active_user(
@@ -233,7 +255,7 @@ async def get_current_user_db(user_id: int, db_session: AsyncSession) -> User:
 
     Args:
         user_id (int): The ID of logged in user.
-        db_session (Session): The SQLAlchemy session used to query the database.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Raises:
         HTTPException: If the user is not found.
@@ -248,25 +270,164 @@ async def get_current_user_db(user_id: int, db_session: AsyncSession) -> User:
     return user
 
 
-async def handle_refresh_access_token(refresh_token: str | None) -> dict:
+async def refresh_access_token(
+    request: Request, response: Response, db_session: AsyncSession
+) -> TokenSchema:
     """
-    Handles the refresh token process by verifying its validity and generating a new access token.
+    Refreshes the access token using the provided refresh token.
 
     Args:
-        refresh_token (str | None): The refresh token provided by the client.
-        db_session (AsyncSession): The SQLAlchemy session to interact with the database.
+        request (Request): The request object containing the refresh token.
+        response (Response): The response object to set the access token.
+        db_session (AsyncSession): The SQLAlchemy session used to query the database.
 
     Returns:
-        dict: A dictionary containing the new access token and its token type.
-
-    Raises:
-        HTTPException: If the refresh token is missing.
-        Exception: If the refresh token cannot be verified.
+        TokenSchema: Access token created using the refresh token.
     """
+    refresh_token = request.cookies.get("refresh_token", None)
     if not refresh_token:
-        raise HTTPException("Refresh token does not exist.")
-    user_data = await verify_token(refresh_token)
-    if not user_data:
-        raise Exception("Cannot verify the refresh token.")
-    new_access_token = create_access_token(data={"sub": user_data.email})
-    return {"access_token": new_access_token, "token_type": "bearer"}
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Refresh token does not exist."
+        )
+    user_email = decode_jwt_token(refresh_token, config["SECRET_KEY"], config["ALGORITHM"])
+    user = await get_user_by_email(db_session, user_email)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    access_token_expires = timedelta(minutes=int(config["ACCESS_TOKEN_EXPIRE_MINUTES"]))
+    new_access_token = create_access_token(data={"sub": user.email})
+    set_cookie(
+        response,
+        "access_token",
+        f"Bearer {new_access_token}",
+        access_token_expires,
+    )
+    return TokenSchema(access_token=new_access_token, token_type="Bearer")
+
+
+async def generate_tokens(
+    form_data: OAuth2PasswordRequestForm, response: Response, db_session: AsyncSession
+):
+    """
+    Generates access and refresh tokens for the user and sets them as cookies in the response.
+
+    Args:
+        form_data (OAuth2PasswordRequestForm): The form data containing the user's username and password.
+        response (Response): The response object to set the tokens as cookies.
+        db_session (AsyncSession): The SQLAlchemy session used to interact with the database.
+    """
+    user = await authenticate_user_from_form(form_data, db_session)
+    access_token, refresh_token = create_tokens_for_user(user)
+    set_token_cookies(response, access_token, refresh_token)
+    return access_token, refresh_token
+
+
+async def authenticate_user_from_form(
+    form_data: OAuth2PasswordRequestForm, db_session: AsyncSession
+) -> User | bool:
+    """
+    Authenticate the user based on the provided username and password.
+
+    Args:
+        form_data (OAuth2PasswordRequestForm): The form data containing the user's username and password.
+        db_session (AsyncSession): The SQLAlchemy session used to interact with the database.
+
+    Returns:
+        User | bool: User object if the authentication is successful, otherwise False.
+    """
+    user = await authenticate_user(db_session, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+
+def create_tokens_for_user(user: User) -> tuple[str, str]:
+    """
+    Creates both access and refresh tokens for the given user.
+
+    Args:
+        user (User): The user object for which the tokens are being created.
+
+    Returns:
+        tuple[str, str]access_token (str): A tuple containing generated access and refresh tokens.
+    """
+    access_token = create_access_token(data={"sub": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.email})
+    return access_token, refresh_token
+
+
+def create_access_token(data: dict) -> str:
+    """
+    Creates an access token with a predefined expiration time.
+
+    Args:
+        data (dict): The payload data to include in the token.
+
+    Returns:
+        str: The encoded access token.
+    """
+    return create_token(
+        data, config["SECRET_KEY"], timedelta(minutes=int(config["ACCESS_TOKEN_EXPIRE_MINUTES"]))
+    )
+
+
+def create_refresh_token(data: dict) -> str:
+    """
+    Creates a refresh token with a predefined expiration time.
+
+    Args:
+        data (dict): The payload data to include in the token.
+
+    Returns:
+        str: The encoded refresh token.
+    """
+    return create_token(
+        data, config["SECRET_KEY"], timedelta(days=int(config["REFRESH_TOKEN_EXPIRE_DAYS"]))
+    )
+
+
+def set_token_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+    """
+    Set the access and refresh tokens as cookies in the response.
+
+    Args:
+        response (Response): The response object to set the tokens as cookies.
+        access_token (str): The access token to be set in the cookies.
+        refresh_token (str): The refresh token to be set in the cookies.
+    """
+    set_cookie(
+        response,
+        "access_token",
+        f"Bearer {access_token}",
+        timedelta(minutes=int(config["ACCESS_TOKEN_EXPIRE_MINUTES"])),
+    )
+    set_cookie(
+        response,
+        "refresh_token",
+        refresh_token,
+        timedelta(days=int(config["REFRESH_TOKEN_EXPIRE_DAYS"])),
+    )
+
+
+def set_cookie(response: Response, key: str, value: str, expires: timedelta) -> None:
+    """
+    Sets a secure HTTP-only cookie on the given response object.
+
+    Args:
+        response (Response): The HTTP response object to which the cookie will be added.
+        key (str): The name of the cookie.
+        value (str): The value to store in the cookie.
+        expires (timedelta): The duration until the cookie expires.
+    """
+    response.set_cookie(
+        key=key,
+        value=value,
+        max_age=expires.total_seconds(),
+        expires=(datetime.now(tz=timezone.utc) + expires),
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+    )

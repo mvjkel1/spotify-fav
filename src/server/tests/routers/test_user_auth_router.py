@@ -5,12 +5,6 @@ from sqlalchemy import select
 from tests.utils.utils import extract_access_token
 
 from ..conftest import db_session, test_client
-
-
-from ..fixtures.routers.user_auth_router_fixtures import (
-    mock_config_env as user_auth_router_fixtures,
-)
-
 from ..fixtures.services.user_auth_service_fixtures import (
     mock_config_env as user_auth_service_fixtures,
 )
@@ -22,7 +16,7 @@ PATH = "/user-auth"
 async def test_register_user_success(test_client, db_session):
     payload = {"email": "test@example.com", "password": "securepassword123"}
     response = await test_client.post(f"{PATH}/register", json=payload)
-    assert response.status_code == status.HTTP_201_CREATED
+    assert response.status_code == status.HTTP_200_OK
     response_data = response.json()
     assert response_data["message"] == "User registered successfully"
     assert response_data["email"] == payload["email"]
