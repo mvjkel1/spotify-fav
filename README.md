@@ -8,7 +8,7 @@ _For those who (really) don't like the Spotify "next song" algorithm_
 
 It is capable of monitoring how often you've played a certain track on Spotify and help you create playlists based on songs you haven't skipped. A song is considered `played` if it has been listened to for at least 10 seconds and `not skipped` if it's still playing with 10 seconds or less remaining when the system polls the current playback state.
 
-[CURRENTLY OFF] Its "demo" version is already deployed at [CURRENTLY OFF]:
+**[CURRENTLY OFF]** Its "demo" version is already deployed at **[CURRENTLY OFF]**:
 
 https://spotify-fav-production.up.railway.app/docs
 
