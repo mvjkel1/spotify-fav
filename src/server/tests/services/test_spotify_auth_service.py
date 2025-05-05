@@ -1,8 +1,9 @@
 import httpx
 import pytest
-from app.services.spotify_auth_service import get_current_spotify_user_id, get_spotify_user
 from fastapi import HTTPException, status
 from httpx import HTTPStatusError
+
+from app.services.spotify_auth_service import get_current_spotify_user_id, get_spotify_user
 
 from ..conftest import db_session
 from ..fixtures.constants import (

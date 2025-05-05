@@ -1,8 +1,9 @@
 import re
 
-from app.db.models import User, user_track_association_table
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio.session import AsyncSession
+
+from app.db.models import User, user_track_association_table
 from tests.fixtures.constants import SPOTIFY_USER_ID_EXAMPLE, TRACK_EXAMPLE_DB, USER_ID_EXAMPLE
 
 

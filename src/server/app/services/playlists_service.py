@@ -3,16 +3,17 @@ import hashlib
 from itertools import chain
 
 import httpx
+from fastapi import HTTPException, status
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio.session import AsyncSession
+from upstash_redis.asyncio import Redis
+
 from app.db.models import Playlist, Track
 from app.services.spotify_auth_service import get_current_spotify_user_id
 from app.services.spotify_token_manager import get_spotify_headers
 from app.services.tracks_service import fetch_listened_tracks
 from app.services.user_auth_service import get_current_user_db
 from app.services.utils import config
-from fastapi import HTTPException, status
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio.session import AsyncSession
-from upstash_redis.asyncio import Redis
 
 MAX_PLAYLIST_TRACKS = 100
 

@@ -2,6 +2,7 @@ from time import time
 from unittest.mock import patch
 
 import pytest
+
 from app.db.models import SpotifyAccessToken
 
 from ..constants import ENV_CONFIG_EXAMPLE

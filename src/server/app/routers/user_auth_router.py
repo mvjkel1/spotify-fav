@@ -1,4 +1,9 @@
 from typing import Annotated
+
+from fastapi import APIRouter, Depends, Request, Response
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.ext.asyncio.session import AsyncSession
+
 from app.db.database import async_get_db
 from app.db.schemas import TokenSchema, UserRegister, UserSchema
 from app.services.user_auth_service import (
@@ -7,9 +12,6 @@ from app.services.user_auth_service import (
     handle_user_register,
     refresh_access_token,
 )
-from fastapi import APIRouter, Depends, Request, Response
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio.session import AsyncSession
 
 router = APIRouter(tags=["user-auth"], prefix="/user-auth")
 

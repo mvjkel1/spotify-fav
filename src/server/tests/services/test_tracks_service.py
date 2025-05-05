@@ -1,5 +1,9 @@
 import httpx
 import pytest
+from fastapi import HTTPException, status
+from sqlalchemy import insert
+from sqlalchemy.ext.asyncio.session import AsyncSession
+
 from app.db.models import Track, User, user_track_association_table
 from app.services.tracks_service import (
     fetch_listened_tracks,
@@ -8,9 +12,6 @@ from app.services.tracks_service import (
     get_recently_played_tracks,
     handle_playing_track,
 )
-from fastapi import HTTPException, status
-from sqlalchemy import insert
-from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from ..conftest import db_session
 from ..fixtures.constants import (

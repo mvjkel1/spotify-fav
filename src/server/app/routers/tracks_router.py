@@ -1,5 +1,8 @@
 from typing import Annotated
 
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response, status
+from sqlalchemy.ext.asyncio.session import AsyncSession
+
 from app.db.database import async_get_db
 from app.db.schemas import UserSchema
 from app.services.tracks_service import (
@@ -11,8 +14,6 @@ from app.services.tracks_service import (
     stop_polling_tracks,
 )
 from app.services.user_auth_service import get_current_active_user
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response, status
-from sqlalchemy.ext.asyncio.session import AsyncSession
 
 router = APIRouter(tags=["tracks"], prefix="/tracks")
 

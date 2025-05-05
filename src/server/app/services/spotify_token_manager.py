@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta, timezone
 
 import httpx
-from app.db.models import SpotifyAccessToken
-from app.services.utils import config
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import SpotifyAccessToken
+from app.services.utils import config
 
 
 async def save_spotify_token(

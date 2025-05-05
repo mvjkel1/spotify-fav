@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
 from app.db.models import Track, User
 
 from ..constants import ENV_CONFIG_EXAMPLE, SPOTIFY_HEADERS_EXAMPLE, SPOTIFY_USER_ID_EXAMPLE
