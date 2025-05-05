@@ -4,7 +4,7 @@ from string import ascii_letters, digits
 from time import perf_counter
 
 from dotenv import dotenv_values, find_dotenv
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, status
 from jose import jwt
 
 env_path = find_dotenv()
@@ -69,14 +69,15 @@ def get_jwt_token(request: Request) -> str:
         str: The decoded JWT access token.
 
     Raises:
-        HTTPException: If the token is not found in cookies (401).
-        HTTPException: If the token has expired (401).
+        HTTPException: If the token is not found in cookies or if the token has expired (401).
     """
     token = request.cookies.get("access_token").removeprefix("Bearer ")
     if not token:
-        raise HTTPException(status_code=401, detail="Token not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token not found")
     try:
         jwt.decode(token, config["SECRET_KEY"], algorithms=config["ALGORITHM"])
         return token.removeprefix("Bearer ")
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="JWT token has expired")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="JWT token has expired"
+        )

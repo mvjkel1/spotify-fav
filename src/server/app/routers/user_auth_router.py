@@ -9,7 +9,7 @@ from app.services.user_auth_service import (
     get_current_active_user,
     handle_user_register,
 )
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from app.services.utils import config
@@ -18,7 +18,7 @@ from app.services.utils import config
 router = APIRouter(tags=["user-auth"], prefix="/user-auth")
 
 
-@router.post("/register", status_code=201)
+@router.post("/register")
 async def register_user(user: UserRegister, db_session: AsyncSession = Depends(async_get_db)):
     """
     Handles user registration by calling the `handle_user_register` function. If the registration is successful,
@@ -57,7 +57,7 @@ async def generate_access_token(
     user = await authenticate_user(db_session, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
