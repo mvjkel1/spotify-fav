@@ -143,26 +143,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return PWD_CONTEXT.verify(plain_password, hashed_password)
 
 
-async def verify_token(token: str) -> TokenData | None:
-    """
-    Verifies and decodes a JWT token.
-
-    Args:
-        token (str): The JWT token to be verified.
-
-    Returns:
-        TokenData: An instance containing the email extracted from the token if valid, None otherwise.
-    """
-    try:
-        payload = jwt.decode(token, config["SECRET_KEY"], algorithms=config["ALGORITHM"])
-        email = payload.get("sub")
-        if email is None:
-            return None
-        return TokenData(email=email)
-    except JWTError:
-        return None
-
-
 async def get_current_user(
     jwt_token: Annotated[str, Depends(OAUTH2_SCHEME)],
     db_session: Annotated[AsyncSession, Depends(async_get_db)],
