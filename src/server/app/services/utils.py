@@ -76,8 +76,9 @@ def get_jwt_token(request: Request) -> str:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token not found")
     try:
         jwt.decode(token, config["SECRET_KEY"], algorithms=config["ALGORITHM"])
-        return token.removeprefix("Bearer ")
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="JWT token has expired"
         )
+
+    return token.removeprefix("Bearer ")

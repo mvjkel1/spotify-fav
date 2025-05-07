@@ -173,7 +173,6 @@ async def exchange_token_with_spotify(form_data: dict, headers: dict) -> dict[st
                 config["SPOTIFY_TOKEN_URL"], data=form_data, headers=headers
             )
         response.raise_for_status()
-        return response.json()
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=exc.response.status_code, detail=f"HTTP error occurred: {exc}"
@@ -182,3 +181,5 @@ async def exchange_token_with_spotify(form_data: dict, headers: dict) -> dict[st
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Network error occurred: {exc}"
         ) from exc
+
+    return response.json()

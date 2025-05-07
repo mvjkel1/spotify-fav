@@ -44,12 +44,13 @@ async def get_playlists_from_spotify(
             url = f"{config['SPOTIFY_API_URL']}/users/{user.spotify_uid}/playlists?offset={offset}&limit={limit}"
             response = await client.get(url, headers=spotify_headers)
             response.raise_for_status()
-            return response.json()
         except httpx.HTTPStatusError as exc:
             raise HTTPException(
                 status_code=exc.response.status_code,
                 detail=f"Failed to retrieve spotify playlists.",
             ) from exc
+
+        return response.json()
 
 
 async def retrieve_playlist_from_spotify_by_spotify_id(
@@ -121,11 +122,12 @@ async def get_all_playlists(user_id: int, db_session: AsyncSession) -> dict:
                 break
             playlists.extend(items)
             offset += limit
-        return {"playlists": playlists}
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
         ) from exc
+
+    return {"playlists": playlists}
 
 
 async def filter_new_tracks(playlists: dict, user_id: int, db_session: AsyncSession) -> list[Track]:
@@ -211,6 +213,7 @@ async def process_playlist_creation(
         )
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text) from exc
+
     return {"message": f"The '{playlist_name}' playlist was created successfully."}
 
 

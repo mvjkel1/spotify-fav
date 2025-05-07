@@ -33,7 +33,6 @@ async def get_current_track(user_id: int, db_session: AsyncSession) -> dict:
             response.raise_for_status()
             if response.status_code == status.HTTP_204_NO_CONTENT:
                 return {"message": "No track currently playing"}
-            return response.json()
         except httpx.HTTPStatusError as exc:
             raise HTTPException(
                 status_code=exc.response.status_code,
@@ -44,6 +43,8 @@ async def get_current_track(user_id: int, db_session: AsyncSession) -> dict:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"Error connecting to Spotify API: {str(exc)}",
             ) from exc
+
+        return response.json()
 
 
 async def poll_playback_state(user_id: int, db_session: AsyncSession) -> None:
@@ -88,7 +89,6 @@ async def get_recently_played_tracks(
             spotify_headers = await get_spotify_headers(user_id, db_session)
             response = await client.get(url, headers=spotify_headers)
             response.raise_for_status()
-            return response.json()
         except httpx.HTTPStatusError as exc:
             raise HTTPException(
                 status_code=exc.response.status_code,
@@ -99,6 +99,8 @@ async def get_recently_played_tracks(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"Error connecting to Spotify API: {str(exc)}",
             ) from exc
+
+        return response.json()
 
 
 async def get_playback_state(user_id: int, db_session: AsyncSession) -> dict:
@@ -120,7 +122,6 @@ async def get_playback_state(user_id: int, db_session: AsyncSession) -> dict:
             response.raise_for_status()
             if response.status_code == status.HTTP_204_NO_CONTENT:
                 return {}
-            return response.json()
         except httpx.HTTPStatusError as exc:
             raise HTTPException(
                 status_code=exc.response.status_code,
@@ -131,6 +132,8 @@ async def get_playback_state(user_id: int, db_session: AsyncSession) -> dict:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"Error connecting to Spotify API: {str(exc)}",
             ) from exc
+
+        return response.json()
 
 
 async def handle_playing_track(
@@ -182,6 +185,7 @@ def extract_track_data(state: dict) -> tuple[str, str, str, str]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Missing data in playback state.",
         ) from exc
+
     return track_progress, track_duration_ms, track_name, track_id
 
 

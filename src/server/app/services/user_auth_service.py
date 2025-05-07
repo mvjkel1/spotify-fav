@@ -215,7 +215,6 @@ def decode_jwt_token(token: str, secret_key: str, algorithm: str) -> str:
                 detail="Token payload missing 'sub' claim",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        return user_email
     except ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -228,6 +227,8 @@ def decode_jwt_token(token: str, secret_key: str, algorithm: str) -> str:
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    return user_email
 
 
 async def get_current_active_user(
