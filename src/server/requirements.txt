@@ -26,8 +26,8 @@ email_validator==2.2.0
 fastapi==0.115.4
 frozenlist==1.5.0
 greenlet==3.1.1
-h11>=0.16.0
-httpcore==1.0.6
+h11==0.16.0
+httpcore==1.0.9
 httpx==0.27.2
 idna==3.10
 iniconfig==2.0.0
@@ -66,6 +66,6 @@ starlette==0.41.2
 tomlkit==0.13.2
 typing_extensions==4.12.2
 upstash-redis==1.2.0
-urllib3>=2.5.0
+urllib3==2.5.0
 uvicorn==0.32.0
 yarl==1.18.3
