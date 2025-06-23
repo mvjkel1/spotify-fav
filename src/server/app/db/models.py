@@ -89,12 +89,14 @@ class SpotifyAccessToken(Base):
     access_token = Column(String, unique=True, nullable=False)
     refresh_token = Column(String, unique=True, nullable=False)
     created_at = Column(
-        type_=TIMESTAMP(timezone=True), default=datetime.now(tz=timezone.utc), nullable=False
+        type_=TIMESTAMP(timezone=True),
+        default=lambda: datetime.now(tz=timezone.utc),
+        nullable=False,
     )
     expires_at = Column(Float, nullable=False)
     updated_at = Column(
         type_=TIMESTAMP(timezone=True),
-        onupdate=datetime.now(tz=timezone.utc),
+        onupdate=lambda: datetime.now(tz=timezone.utc),
     )
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     user = relationship("User", back_populates="spotify_access_token")
@@ -153,4 +155,6 @@ class Playlist(Base):
     tracks = relationship(
         "Track", secondary=playlist_track_association_table, back_populates="playlists"
     )
-    created_at = Column(type_=TIMESTAMP(timezone=True), default=datetime.now(tz=timezone.utc))
+    created_at = Column(
+        type_=TIMESTAMP(timezone=True), default=lambda: datetime.now(tz=timezone.utc)
+    )
