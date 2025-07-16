@@ -76,21 +76,62 @@ async def retrieve_playlist_from_spotify_by_spotify_id(
 
 async def sync_playlists(user_id: int, db_session: AsyncSession) -> None:
     """
-    Synchronize spotify-fav playlists between database and the Spotify.
+    Synchronize spotify-fav playlists between database and Spotify.
 
     Args:
         user_id (int): The ID of logged in user.
         db_session (AsyncSession): The SQLAlchemy async session used to query the database.
     """
+    db_playlists_ids = await get_db_playlist_ids(db_session)
+    spotify_playlists_ids = await get_spotify_playlist_ids(user_id, db_session)
+    await remove_unmatched_playlists(db_playlists_ids, spotify_playlists_ids, db_session)
+
+
+async def get_db_playlist_ids(db_session: AsyncSession) -> set[str]:
+    """
+    Retrieve Spotify playlist IDs stored in the database.
+
+    Args:
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
+
+    Returns:
+        set[str]: A set of Spotify playlist IDs from the database.
+    """
     result = await db_session.execute(select(Playlist))
     db_playlists = result.scalars().all()
-    db_playlists_ids = {playlist.spotify_id for playlist in db_playlists}
+    return {playlist.spotify_id for playlist in db_playlists}
+
+
+async def get_spotify_playlist_ids(user_id: int, db_session: AsyncSession) -> set[str]:
+    """
+    Fetch Spotify playlist IDs for the user that contain 'spotify_fav' in their names.
+
+    Args:
+        user_id (int): The ID of the logged-in user.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
+
+    Returns:
+        set[str]: A set of Spotify playlist IDs retrieved from the user's account.
+    """
     spotify_playlists = await get_all_playlists(user_id, db_session)
-    spotify_playlists_ids = {
+    return {
         playlist["id"]
-        for playlist in list(spotify_playlists.values())[0]
+        for playlist in next(iter(spotify_playlists.values()), [])
         if "spotify_fav" in playlist["name"]
     }
+
+
+async def remove_unmatched_playlists(
+    db_playlists_ids: set[str], spotify_playlists_ids: set[str], db_session: AsyncSession
+) -> None:
+    """
+    Remove playlists from the database that are no longer present in the user's Spotify account.
+
+    Args:
+        db_playlists_ids (set[str]): A set of playlist IDs currently in the database.
+        spotify_playlists_ids (set[str]): A set of playlist IDs fetched from Spotify.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
+    """
     playlists_to_remove_ids = db_playlists_ids - spotify_playlists_ids
     if playlists_to_remove_ids:
         await db_session.execute(
