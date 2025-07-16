@@ -97,13 +97,76 @@ async def handle_spotify_callback(
     Raises:
         HTTPException: If the authorization code is missing or token retrieval fails.
     """
+    validate_spotify_code(code)
+    tokens = await fetch_spotify_tokens(code)
+    access_token, refresh_token, expires_in = extract_spotify_token_fields(tokens)
+    current_user = await get_current_user(jwt_token, db_session)
+    await save_spotify_token(access_token, refresh_token, expires_in, current_user.id, db_session)
+    await update_user_spotify_uid(current_user, db_session)
+    return RedirectResponse(url=config["CALLBACK_REDIRECT_URL"])
+
+
+async def update_user_spotify_uid(user, db_session: AsyncSession) -> None:
+    """
+    Update the user's Spotify UID.
+
+    Args:
+        user (User): The current authenticated user.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
+    """
+    spotify_user = await get_spotify_user(user.id, db_session)
+    user.spotify_uid = spotify_user.get("id")
+    await db_session.commit()
+
+
+def validate_spotify_code(code: str) -> None:
+    """
+    Validate that the Spotify authorization code is present.
+
+    Args:
+        code (str): The authorization code returned by Spotify.
+
+    Raises:
+        HTTPException: If the code is missing.
+    """
     if not code:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Authorization code missing"
         )
+
+
+async def fetch_spotify_tokens(code: str) -> dict:
+    """
+    Exchange the authorization code for access and refresh tokens.
+
+    Args:
+        code (str): The authorization code returned by Spotify.
+
+    Returns:
+        dict: A dictionary containing access_token, refresh_token, and expires_in token fields.
+
+    Raises:
+        HTTPException: If the token exchange fails.
+    """
     headers = build_spotify_auth_headers()
     form_data = build_spotify_token_request_data(code)
     tokens = await exchange_token_with_spotify(form_data, headers)
+    return tokens
+
+
+def extract_spotify_token_fields(tokens: dict) -> tuple[str, str, int]:
+    """
+    Extract token values from the Spotify token response.
+
+    Args:
+        tokens (dict): The token response returned from Spotify.
+
+    Returns:
+        tuple[str, str, int]: Access token, refresh token, and expiration time.
+
+    Raises:
+        HTTPException: If any token is missing from the response.
+    """
     access_token, refresh_token, expires_in = map(
         tokens.get, ["access_token", "refresh_token", "expires_in"]
     )
@@ -112,12 +175,7 @@ async def handle_spotify_callback(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve tokens from Spotify",
         )
-    current_user = await get_current_user(jwt_token, db_session)
-    await save_spotify_token(access_token, refresh_token, expires_in, current_user.id, db_session)
-    spotify_user = await get_spotify_user(current_user.id, db_session)
-    current_user.spotify_uid = spotify_user.get("id")
-    await db_session.commit()
-    return RedirectResponse(url=config["CALLBACK_REDIRECT_URL"])
+    return access_token, refresh_token, expires_in
 
 
 def build_spotify_auth_headers() -> dict[str, str]:
