@@ -8,7 +8,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 env_path = find_dotenv()
 config = dotenv_values(env_path)
 
-if "PROD" in dict(os.environ).keys() and dict(os.environ)["PROD"] == "RAILWAY":
+if os.environ.get("PROD") == "RAILWAY":
     config = dict(os.environ)
 
 SQLALCHEMY_DATABASE_URL = config.get("SQLALCHEMY_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
