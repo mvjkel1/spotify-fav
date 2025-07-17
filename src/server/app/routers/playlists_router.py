@@ -6,7 +6,7 @@ from app.services.playlists_service import (
     get_all_playlists,
     get_playlists_from_spotify,
     process_playlist_creation,
-    retrieve_playlist_from_spotify_by_spotify_id,
+    retrieve_playlist_from_spotify_by_playlist_id,
 )
 from app.services.user_auth_service import get_current_active_user
 from fastapi import APIRouter, Depends, Query
@@ -69,7 +69,7 @@ async def get_playlist_by_spotify_id(
     Returns:
         dict: A dictionary containing the retrieved playlist information.
     """
-    return await retrieve_playlist_from_spotify_by_spotify_id(
+    return await retrieve_playlist_from_spotify_by_playlist_id(
         spotify_id, current_user.id, db_session
     )
 

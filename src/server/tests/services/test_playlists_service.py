@@ -2,10 +2,10 @@ import httpx
 import pytest
 from app.db.models import Playlist
 from app.services.playlists_service import (
-    cache_playlist_tracks,
+    cache_playlists_tracks,
     get_playlists_from_spotify,
     process_playlist_creation,
-    retrieve_playlist_from_spotify_by_spotify_id,
+    retrieve_playlist_from_spotify_by_playlist_id,
     sync_playlists,
 )
 from fastapi import HTTPException, status
@@ -62,7 +62,7 @@ async def test_get_playlists_from_spotify_success(
 
 
 @pytest.mark.asyncio
-async def test_retrieve_playlist_from_spotify_by_spotify_id_success(
+async def test_retrieve_playlist_from_spotify_by_playlist_id_success(
     db_session, mock_get_spotify_headers, mock_async_client_get
 ):
     mock_request = httpx.Request("GET", "mock_request")
@@ -71,7 +71,7 @@ async def test_retrieve_playlist_from_spotify_by_spotify_id_success(
         json={"playlist1": "data"},
         request=mock_request,
     )
-    response = await retrieve_playlist_from_spotify_by_spotify_id(
+    response = await retrieve_playlist_from_spotify_by_playlist_id(
         spotify_id=SPOTIFY_PLAYLIST_ID_EXAMPLE, user_id=USER_ID_EXAMPLE, db_session=db_session
     )
     assert response == {"playlist1": "data"}
@@ -79,7 +79,7 @@ async def test_retrieve_playlist_from_spotify_by_spotify_id_success(
 
 
 @pytest.mark.asyncio
-async def test_retrieve_playlist_from_spotify_by_spotify_id_success(
+async def test_retrieve_playlist_from_spotify_by_playlist_id_success(
     db_session, mock_get_spotify_headers, mock_async_client_get
 ):
     mock_request = httpx.Request("GET", "mock_request")
@@ -88,7 +88,7 @@ async def test_retrieve_playlist_from_spotify_by_spotify_id_success(
         json={"playlist1": "data"},
         request=mock_request,
     )
-    response = await retrieve_playlist_from_spotify_by_spotify_id(
+    response = await retrieve_playlist_from_spotify_by_playlist_id(
         spotify_id=SPOTIFY_PLAYLIST_ID_EXAMPLE, user_id=USER_ID_EXAMPLE, db_session=db_session
     )
     assert response == {"playlist1": "data"}
@@ -96,7 +96,7 @@ async def test_retrieve_playlist_from_spotify_by_spotify_id_success(
 
 
 @pytest.mark.asyncio
-async def test_retrieve_playlist_from_spotify_by_spotify_id_unauthorized(
+async def test_retrieve_playlist_from_spotify_by_playlist_id_unauthorized(
     db_session, mock_get_spotify_headers, mock_async_client_get
 ):
     mock_request = httpx.Request("GET", "mock_request")
@@ -105,7 +105,7 @@ async def test_retrieve_playlist_from_spotify_by_spotify_id_unauthorized(
         json={"error": "Unauthorized"},
         request=mock_request,
     )
-    response = await retrieve_playlist_from_spotify_by_spotify_id(
+    response = await retrieve_playlist_from_spotify_by_playlist_id(
         spotify_id=SPOTIFY_PLAYLIST_ID_EXAMPLE, user_id=USER_ID_EXAMPLE, db_session=db_session
     )
     assert response == {"error": "Unauthorized"}
@@ -241,7 +241,7 @@ async def test_process_playlist_creation_failure(
     ],
 )
 @pytest.mark.asyncio
-async def test_cache_playlist_tracks(
+async def test_cache_playlists_tracks(
     playlists,
     mocked_responses,
     expected_result,
@@ -255,6 +255,6 @@ async def test_cache_playlist_tracks(
         httpx.Response(status.HTTP_200_OK, json=mocked_response, request=mock_request)
         for mocked_response in mocked_responses
     ]
-    result = await cache_playlist_tracks(playlists, USER_ID_EXAMPLE, db_session)
+    result = await cache_playlists_tracks(playlists, USER_ID_EXAMPLE, db_session)
     assert result == expected_result
     assert mock_async_client_get.call_count == len(playlists)

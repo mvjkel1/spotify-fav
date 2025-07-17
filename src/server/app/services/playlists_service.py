@@ -52,7 +52,7 @@ async def get_playlists_from_spotify(
         return response.json()
 
 
-async def retrieve_playlist_from_spotify_by_spotify_id(
+async def retrieve_playlist_from_spotify_by_playlist_id(
     spotify_id: str, user_id: int, db_session: AsyncSession
 ) -> dict:
     """
@@ -183,8 +183,8 @@ async def filter_new_tracks(playlists: dict, user_id: int, db_session: AsyncSess
         list: A list of tracks that are new and not included in any existing playlists.
     """
     tracks = await fetch_listened_tracks(user_id, db_session)
-    playlist_tracks = await cache_playlist_tracks(playlists["playlists"], user_id, db_session)
-    existing_track_titles = list(chain.from_iterable(playlist_tracks.values()))
+    playlists_tracks = await cache_playlists_tracks(playlists["playlists"], user_id, db_session)
+    existing_track_titles = list(chain.from_iterable(playlists_tracks.values()))
     return [track for track in tracks if track.title not in existing_track_titles]
 
 
@@ -329,63 +329,193 @@ async def add_tracks_to_playlist(
         response.raise_for_status()
 
 
-async def cache_playlist_tracks(
+async def cache_playlists_tracks(
     playlists: list[dict], user_id: int, db_session: AsyncSession
-) -> dict[str, set]:
+) -> dict[str, set[str]]:
     """
-    Fetch all tracks for each playlist and store them in a cache (Redis).
+    Caches tracks for multiple Spotify playlists in Redis.
 
     Args:
-        playlists (list[dict]): List of dictonaries containing the playlists details.
-        user_id (int): The ID of logged in user.
+        playlists (list[dict]): List of Spotify playlist dictionaries.
+        user_id (int): ID of the current user.
         db_session (AsyncSession): The SQLAlchemy async session used to query the database.
 
     Returns:
-        dict[str, set]: A dictionary with playlist IDs as keys and sets of track titles as values.
+        dict[str, set[str]]: Mapping of playlist IDs to sets of track titles.
     """
-    playlist_tracks_cache = {}
-    spotify_headers = await get_spotify_headers(user_id, db_session)
-    redis_client = Redis(
+    redis = Redis(
         url=config["REDIS_URL"],
         token=config["REDIS_TOKEN"],
     )
+    cache = {}
 
-    def generate_hash(tracks: set) -> str:
-        """Generate a SHA-256 hash of the sorted track names."""
-        return hashlib.sha256(",".join(sorted(tracks)).encode()).hexdigest()
+    await asyncio.gather(
+        *[process_playlist_cache(p, user_id, redis, cache, db_session) for p in playlists]
+    )
 
-    async def fetch_tracks(playlist: dict) -> None:
-        """
-        Fetch tracks for a given playlist and update cache if changes in playlists tracks are detected.
+    await redis.close()
+    return cache
 
-        Args:
-            playlist (dict): A dictionary containing the details of the playlist.
 
-        Raises:
-            httpx.HTTPStatusError: If the request to the Spotify API fails.
-        """
-        spotify_id = playlist["uri"].split(":")[-1]
-        cache_key = f"playlist:{spotify_id}:{user_id}:tracks"
-        hash_key = f"playlist:{spotify_id}:{user_id}:hash"
-        cached_tracks = await redis_client.get(cache_key)
-        cached_hash = await redis_client.get(hash_key)
-        cached_tracks_set = set(cached_tracks.split(")%(")) if cached_tracks else set()
-        async with httpx.AsyncClient() as client:
-            url = f"{config['SPOTIFY_API_URL']}/playlists/{spotify_id}"
-            response = await client.get(url, headers=spotify_headers)
-            response.raise_for_status()
-            playlist_details = response.json()["tracks"]["items"]
-            tracks = {item["track"]["name"] for item in playlist_details}
+async def process_playlist_cache(
+    playlist: dict, user_id: int, redis: Redis, cache: dict[str, set[str]], db_session: AsyncSession
+) -> None:
+    """
+    Checks if a playlist's track list in Redis is up to date.
+    If stale, fetches updated tracks from Spotify and refreshes the cache.
 
-        new_hash = generate_hash(tracks)
-        if cached_hash and cached_hash == new_hash:
-            playlist_tracks_cache[spotify_id] = cached_tracks_set
-            return
+    Args:
+        playlist (dict): Playlist dictionary containing metadata.
+        user_id (int): ID of the current user.
+        redis (Redis): Redis client.
+        cache (dict): Dictionary to store track sets by playlist ID.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
+    """
+    spotify_playlist_id = get_spotify_playlist_id(playlist)
+    cache_key, hash_key = build_cache_keys(spotify_playlist_id, user_id)
 
-        await redis_client.set(cache_key, ")%(".join(tracks), ex=3600)
-        await redis_client.set(hash_key, new_hash, ex=3600)
-        playlist_tracks_cache[spotify_id] = tracks
+    cached_tracks, cached_hash = await get_cached_playlist(redis, cache_key, hash_key)
+    fresh_tracks = await get_playlist_tracks(spotify_playlist_id, user_id, db_session)
+    fresh_hash = generate_hash(fresh_tracks)
 
-    await asyncio.gather(*[fetch_tracks(playlist) for playlist in playlists])
-    await redis_client.close()
-    return playlist_tracks_cache
+    if should_use_cache(cached_hash, fresh_hash):
+        cache[spotify_playlist_id] = cached_tracks
+    else:
+        await update_cache(redis, cache_key, hash_key, fresh_tracks, fresh_hash)
+        cache[spotify_playlist_id] = fresh_tracks
+
+
+def get_spotify_playlist_id(playlist: dict) -> str:
+    """
+    Extracts the Spotify playlist ID from its URI.
+
+    Args:
+        playlist (dict): Playlist details dictionary.
+
+    Returns:
+        str: Spotify playlist ID.
+    """
+    return playlist["uri"].split(":")[-1]
+
+
+def build_cache_keys(spotify_id: str, user_id: int) -> tuple[str, str]:
+    """
+    Builds Redis keys for a playlist's track data and hash.
+
+    Args:
+        spotify_id (str): Spotify playlist ID.
+        user_id (int): User ID.
+
+    Returns:
+        tuple[str, str]: (track list key, hash key)
+    """
+    return (f"playlist:{spotify_id}:{user_id}:tracks", f"playlist:{spotify_id}:{user_id}:hash")
+
+
+def generate_hash(tracks: set[str]) -> str:
+    """
+    Generates a hash to detect changes in the playlist's track list.
+
+    Args:
+        tracks (set[str]): Set of track titles.
+
+    Returns:
+        str: SHA-256 hash of the sorted track list.
+    """
+    return hashlib.sha256(",".join(sorted(tracks)).encode()).hexdigest()
+
+
+def serialize_tracks(tracks: set[str]) -> str:
+    """
+    Serializes a set of track names into a Redis-storable string.
+
+    Args:
+        tracks (set[str]): Track titles.
+
+    Returns:
+        str: Serialized string.
+    """
+    return ")%(".join(tracks)
+
+
+def deserialize_tracks(raw: str | None) -> set[str]:
+    """
+    Deserializes a Redis-stored string into a set of track names.
+
+    Args:
+        raw (str | None): Raw cached string.
+
+    Returns:
+        set[str]: Set of track titles.
+    """
+    return set(raw.split(")%(")) if raw else set()
+
+
+async def get_cached_playlist(
+    redis: Redis, cache_key: str, hash_key: str
+) -> tuple[set[str], str | None]:
+    """
+    Retrieves the cached playlist tracks and corresponding hash value from Redis.
+
+    Args:
+        redis (Redis): Redis client.
+        cache_key (str): Redis key for track data.
+        hash_key (str): Redis key for hash value.
+
+    Returns:
+        tuple[set[str], Optional[str]]: Cached tracks and hash value, if present.
+    """
+    raw_tracks = await redis.get(cache_key)
+    hash_val = await redis.get(hash_key)
+    return deserialize_tracks(raw_tracks), hash_val
+
+
+async def get_playlist_tracks(
+    spotify_playlist_id: str, user_id: int, db_session: AsyncSession
+) -> set[str]:
+    """
+    Fetches the latest set of track names from the Spotify API for a given playlist.
+
+    Args:
+        spotify_playlist_id (str): Spotify playlist ID.
+        user_id (int): User ID.
+        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
+
+    Returns:
+        set[str]: Set of track titles.
+    """
+    playlist = await retrieve_playlist_from_spotify_by_playlist_id(
+        spotify_playlist_id, user_id, db_session
+    )
+    return {item["track"]["name"] for item in playlist["tracks"]["items"]}
+
+
+def should_use_cache(cached_hash: str | None, new_hash: str) -> bool:
+    """
+    Compares cached hash with a new hash to determine cache validity.
+
+    Args:
+        cached_hash (str | None): Previously cached hash.
+        new_hash (str): Newly computed hash.
+
+    Returns:
+        bool: True if cache is valid (no changes), False otherwise.
+    """
+    return cached_hash == new_hash
+
+
+async def update_cache(
+    redis: Redis, cache_key: str, hash_key: str, tracks: set[str], hash_val: str
+) -> None:
+    """
+    Stores updated playlist track data and hash value in Redis.
+
+    Args:
+        redis (Redis): Redis client.
+        cache_key (str): Key for track list.
+        hash_key (str): Key for hash.
+        tracks (set[str]): Set of current track titles.
+        hash_val (str): Fresh hash computed from tracks.
+    """
+    await redis.set(cache_key, serialize_tracks(tracks), ex=3600)
+    await redis.set(hash_key, hash_val, ex=3600)
