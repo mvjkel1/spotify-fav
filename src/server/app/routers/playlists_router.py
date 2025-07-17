@@ -1,8 +1,5 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio.session import AsyncSession
-
 from app.db.database import async_get_db
 from app.db.schemas import UserSchema
 from app.services.playlists_service import (
@@ -12,6 +9,8 @@ from app.services.playlists_service import (
     retrieve_playlist_from_spotify_by_spotify_id,
 )
 from app.services.user_auth_service import get_current_active_user
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio.session import AsyncSession
 
 router = APIRouter(tags=["playlists"], prefix="/playlists")
 

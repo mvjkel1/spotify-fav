@@ -1,6 +1,5 @@
 import pytest
 from fastapi import status
-
 from tests.fixtures.constants import USER_DATA_EXAMPLE
 from tests.fixtures.routers.spotify_auth_router_fixtures import mock_get_spotify_user
 

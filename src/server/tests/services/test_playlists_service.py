@@ -1,8 +1,5 @@
 import httpx
 import pytest
-from fastapi import HTTPException, status
-from sqlalchemy import select
-
 from app.db.models import Playlist
 from app.services.playlists_service import (
     cache_playlist_tracks,
@@ -11,6 +8,8 @@ from app.services.playlists_service import (
     retrieve_playlist_from_spotify_by_spotify_id,
     sync_playlists,
 )
+from fastapi import HTTPException, status
+from sqlalchemy import select
 
 from ..fixtures.constants import (
     GET_MY_PLAYLISTS_URL_EXAMPLE,

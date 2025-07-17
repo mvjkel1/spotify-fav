@@ -1,10 +1,5 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import RedirectResponse
-from jose import jwt
-from sqlalchemy.ext.asyncio.session import AsyncSession
-
 from app.db.database import async_get_db
 from app.db.schemas import UserSchema
 from app.services.spotify_auth_service import (
@@ -14,6 +9,10 @@ from app.services.spotify_auth_service import (
 )
 from app.services.user_auth_service import get_current_active_user
 from app.services.utils import config, get_jwt_token
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import RedirectResponse
+from jose import jwt
+from sqlalchemy.ext.asyncio.session import AsyncSession
 
 router = APIRouter(tags=["spotify-auth"], prefix="/spotify-auth")
 

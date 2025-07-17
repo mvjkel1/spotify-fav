@@ -1,15 +1,14 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
-from prometheus_client import Histogram, make_wsgi_app
-from starlette.middleware.wsgi import WSGIMiddleware
-
 import app.routers.playlists_router as playlists_router
 import app.routers.spotify_auth_router as spotify_auth_router
 import app.routers.tracks_router as tracks_router
 import app.routers.user_auth_router as user_auth_router
 from app.db.database import async_get_db
 from app.services.tracks_service import update_polling_status
+from fastapi import FastAPI, Request
+from prometheus_client import Histogram, make_wsgi_app
+from starlette.middleware.wsgi import WSGIMiddleware
 
 REQUEST_DURATION = Histogram(
     "http_request_duration_seconds", "Duration of HTTP requests in seconds", ["method", "endpoint"]

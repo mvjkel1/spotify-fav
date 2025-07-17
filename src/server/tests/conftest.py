@@ -2,14 +2,13 @@ from contextlib import asynccontextmanager
 
 import pytest
 import pytest_asyncio
+from app.db.database import Base, async_get_db
+from app.main import app
+from app.services.user_auth_service import get_current_active_user
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-
-from app.db.database import Base, async_get_db
-from app.main import app
-from app.services.user_auth_service import get_current_active_user
 from tests.fixtures.constants import USER_SCHEMA_EXAMPLE
 
 SQLITE_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
