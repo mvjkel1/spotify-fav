@@ -1,5 +1,7 @@
 from typing import Annotated
 
+from fastapi.responses import JSONResponse
+
 from app.db.database import async_get_db
 from app.db.schemas import UserSchema
 from app.services.tracks_service import (
@@ -11,7 +13,7 @@ from app.services.tracks_service import (
     stop_polling_tracks,
 )
 from app.services.user_auth_service import get_current_active_user
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
 router = APIRouter(tags=["tracks"], prefix="/tracks")
@@ -111,7 +113,14 @@ async def fetch_playback_state(
         dict: A dictionary containing details of the current playback state.
     """
     playback_state = await get_playback_state(current_user.id, db_session)
-    return playback_state if playback_state else Response(status_code=status.HTTP_204_NO_CONTENT)
+    return (
+        playback_state
+        if playback_state
+        else JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"detail": "No active playback found for the user."},
+        )
+    )
 
 
 @router.get("/polled")
