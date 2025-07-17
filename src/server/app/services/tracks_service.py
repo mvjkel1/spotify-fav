@@ -60,7 +60,7 @@ async def poll_playback_state(user_id: int, db_session: AsyncSession) -> None:
             if playback_state:
                 await handle_playing_track(playback_state, user_id, db_session)
         except HTTPException as exc:
-            await update_polling_status(user_id, False, db_session)
+            await update_polling_status(False, db_session, user_id)
             break
         await asyncio.sleep(5)
 
@@ -338,24 +338,23 @@ async def wait_for_song_change(track_title: str, user_id: int, db_session: Async
         await asyncio.sleep(1)
 
 
-async def update_polling_status(user_id: int, enable: bool, db_session: AsyncSession) -> None:
+async def update_polling_status(
+    enable: bool, db_session: AsyncSession, user_id: int | None = None
+) -> None:
     """
-    Update the polling status for a specific user.
+    Enable or disable polling for a specific user or all users.
 
     Args:
-        user_id (int): The ID of the user to update.
         enable (bool): Whether to enable or disable polling.
-        db_session (AsyncSession): The SQLAlchemy async session used to query the database.
+        db_session (AsyncSession): Async SQLAlchemy session.
+        user_id (int | None): If provided, only update polling for this user.
     """
-    result = await db_session.execute(select(User).filter(User.id == user_id))
-    user = result.scalars().one_or_none()
+    query = select(User).filter_by(id=user_id) if user_id else select(User)
+    users = (await db_session.execute(query)).scalars().all()
 
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found."
-        )
+    for user in users:
+        user.is_polling = enable
 
-    user.is_polling = enable
     await db_session.commit()
 
 
@@ -430,7 +429,7 @@ async def start_polling_tracks(
             status.HTTP_409_CONFLICT,
             "The polling session for current user has already started.",
         )
-    await update_polling_status(user_id, True, db_session)
+    await update_polling_status(True, db_session, user_id)
     background_tasks.add_task(poll_playback_state, user_id, db_session)
     return {"message": "Playback state polling started in the background."}
 
@@ -457,5 +456,5 @@ async def stop_polling_tracks(user_id: int, db_session: AsyncSession) -> dict[st
             status.HTTP_409_CONFLICT,
             "The polling session for current user has not started.",
         )
-    await update_polling_status(user_id, False, db_session)
+    await update_polling_status(False, db_session, user_id)
     return {"message": "Polling session has been stopped successfully"}

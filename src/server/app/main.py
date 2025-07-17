@@ -21,7 +21,7 @@ async def app_lifespan(app: FastAPI):
     try:
         yield
     finally:
-        await update_polling_status(db_session, enable=False)
+        await update_polling_status(False, db_session)
 
 
 app = FastAPI(lifespan=app_lifespan)
