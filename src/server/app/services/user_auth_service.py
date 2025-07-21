@@ -65,21 +65,6 @@ def create_token(data: dict, secret_key: str, expires_delta: timedelta) -> str:
     return encoded_jwt
 
 
-def create_access_token(data: dict) -> str:
-    """
-    Creates an access token with a predefined expiration time.
-
-    Args:
-        data (dict): The payload data to include in the token.
-
-    Returns:
-        str: The encoded access token.
-    """
-    return create_token(
-        data, config["SECRET_KEY"], timedelta(minutes=int(config["ACCESS_TOKEN_EXPIRE_MINUTES"]))
-    )
-
-
 def hash_password(password: str) -> str:
     """
     Hashes a plain text password using the configured hashing algorithm.

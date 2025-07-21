@@ -15,7 +15,6 @@ SQLALCHEMY_DATABASE_URL = config.get("SQLALCHEMY_DATABASE_URL", "sqlite+aiosqlit
 
 async_engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=False, future=True)
 
-
 local_session = sessionmaker(
     autocommit=False,
     autoflush=False,
