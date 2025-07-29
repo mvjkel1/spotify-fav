@@ -372,17 +372,15 @@ async def process_playlist_cache(
         db_session (AsyncSession): The SQLAlchemy async session used to query the database.
     """
     spotify_playlist_id = get_spotify_playlist_id(playlist)
-    cache_key, hash_key = build_cache_keys(spotify_playlist_id, user_id)
-
-    cached_tracks, cached_hash = await get_cached_playlist(redis, cache_key, hash_key)
-    fresh_tracks = await get_playlist_tracks(spotify_playlist_id, user_id, db_session)
-    fresh_hash = generate_hash(fresh_tracks)
-
-    if should_use_cache(cached_hash, fresh_hash):
+    cache_key = build_cache_key(spotify_playlist_id, user_id)
+    cached_tracks = await get_cached_playlist(redis, cache_key)
+    if cached_tracks:
         cache[spotify_playlist_id] = cached_tracks
-    else:
-        await update_cache(redis, cache_key, hash_key, fresh_tracks, fresh_hash)
-        cache[spotify_playlist_id] = fresh_tracks
+        return
+
+    fresh_tracks = await get_playlist_tracks(spotify_playlist_id, user_id, db_session)
+    await update_cache(redis, cache_key, fresh_tracks)
+    cache[spotify_playlist_id] = fresh_tracks
 
 
 def get_spotify_playlist_id(playlist: dict) -> str:
@@ -398,18 +396,18 @@ def get_spotify_playlist_id(playlist: dict) -> str:
     return playlist["uri"].split(":")[-1]
 
 
-def build_cache_keys(spotify_id: str, user_id: int) -> tuple[str, str]:
+def build_cache_key(spotify_id: str, user_id: int) -> tuple[str, str]:
     """
-    Builds Redis keys for a playlist's track data and hash.
+    Builds Redis keys for a playlist's tracks data.
 
     Args:
         spotify_id (str): Spotify playlist ID.
         user_id (int): User ID.
 
     Returns:
-        tuple[str, str]: (track list key, hash key)
+        tuple[str, str]: Redis playlist tracks list key.
     """
-    return (f"playlist:{spotify_id}:{user_id}:tracks", f"playlist:{spotify_id}:{user_id}:hash")
+    return f"playlist:{spotify_id}:{user_id}:tracks"
 
 
 def generate_hash(tracks: set[str]) -> str:
@@ -452,22 +450,20 @@ def deserialize_tracks(raw: str | None) -> set[str]:
 
 
 async def get_cached_playlist(
-    redis: Redis, cache_key: str, hash_key: str
+    redis: Redis, cache_key: SyntaxWarning
 ) -> tuple[set[str], str | None]:
     """
-    Retrieves the cached playlist tracks and corresponding hash value from Redis.
+    Retrieves the cached playlist tracks from Redis.
 
     Args:
         redis (Redis): Redis client.
         cache_key (str): Redis key for track data.
-        hash_key (str): Redis key for hash value.
 
     Returns:
-        tuple[set[str], Optional[str]]: Cached tracks and hash value, if present.
+        tuple[set[str]]: Cached tracks.
     """
     raw_tracks = await redis.get(cache_key)
-    hash_val = await redis.get(hash_key)
-    return deserialize_tracks(raw_tracks), hash_val
+    return deserialize_tracks(raw_tracks)
 
 
 async def get_playlist_tracks(
@@ -504,18 +500,13 @@ def should_use_cache(cached_hash: str | None, new_hash: str) -> bool:
     return cached_hash == new_hash
 
 
-async def update_cache(
-    redis: Redis, cache_key: str, hash_key: str, tracks: set[str], hash_val: str
-) -> None:
+async def update_cache(redis: Redis, cache_key: str, tracks: set[str]) -> None:
     """
-    Stores updated playlist track data and hash value in Redis.
+    Stores updated playlist tracks data in Redis.
 
     Args:
         redis (Redis): Redis client.
         cache_key (str): Key for track list.
-        hash_key (str): Key for hash.
         tracks (set[str]): Set of current track titles.
-        hash_val (str): Fresh hash computed from tracks.
     """
     await redis.set(cache_key, serialize_tracks(tracks), ex=3600)
-    await redis.set(hash_key, hash_val, ex=3600)
